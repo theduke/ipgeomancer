@@ -1,0 +1,8 @@
+[package]
+name = "ipgeom_rpsl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rpsl = "0.1.1"
+rpsl-rs = "2.0.0"
