@@ -1,6 +1,6 @@
 use std::io::Read as _;
 
-use crate::{Client, DbData, Rir};
+use crate::{Client, DbData, RirProvider};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -11,7 +11,7 @@ impl Afrinic {
     const RPSL_DOWNLOAD_URL: &'static str = "https://ftp.afrinic.net/pub/dbase/afrinic.db.gz";
 }
 
-impl Rir for Afrinic {
+impl RirProvider for Afrinic {
     fn download_rpsl_db<'a>(
         &'a self,
         client: &'a Client,

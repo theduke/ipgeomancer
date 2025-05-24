@@ -6,14 +6,14 @@ use std::path::PathBuf;
 use flate2::read::GzDecoder;
 use ipgeom_rpsl::{RpslObject, parse_objects_read_iter};
 
-use crate::{Client, DbData, Rir, registry, types};
+use crate::{Client, DbData, RirProvider, registry, types};
 
 /// Persistent store for RIR database dumps.
 #[derive(Debug)]
 pub struct Store {
     data_dir: PathBuf,
     client: Client,
-    rirs: HashMap<types::Rir, Box<dyn Rir>>,
+    rirs: HashMap<types::Rir, Box<dyn RirProvider>>,
 }
 
 impl Store {
@@ -24,15 +24,21 @@ impl Store {
             .build()
             .expect("failed to build client");
 
-        let rirs: HashMap<types::Rir, Box<dyn Rir>> = [
+        let rirs: HashMap<types::Rir, Box<dyn RirProvider>> = [
+            // (
+            //     types::Rir::Arin,
+            //     Box::new(registry::arin::Arin {}) as Box<dyn RirProvider>,
+            // ),
+            // (types::Rir::Apnic, Box::new(registry::apnic::Apnic {})),
+            // (
+            //     types::Rir::Ripe,
+            //     Box::new(registry::ripe::Ripe {}) as Box<dyn RirProvider>,
+            // ),
+            // (types::Rir::Lacnic, Box::new(registry::lacnic::Lacnic {})),
             (
-                types::Rir::Arin,
-                Box::new(registry::arin::Arin {}) as Box<dyn Rir>,
+                types::Rir::Afrinic,
+                Box::new(registry::afrinic::Afrinic {}) as Box<dyn RirProvider>,
             ),
-            (types::Rir::Apnic, Box::new(registry::apnic::Apnic {})),
-            (types::Rir::Ripe, Box::new(registry::ripe::Ripe {})),
-            (types::Rir::Lacnic, Box::new(registry::lacnic::Lacnic {})),
-            (types::Rir::Afrinic, Box::new(registry::afrinic::Afrinic {})),
         ]
         .into_iter()
         .collect();
@@ -47,7 +53,7 @@ impl Store {
     /// Create a store with custom RIR implementations (useful for testing).
     pub fn with_rirs<P: Into<PathBuf>>(
         data_dir: P,
-        rirs: HashMap<types::Rir, Box<dyn Rir>>,
+        rirs: HashMap<types::Rir, Box<dyn RirProvider>>,
     ) -> Self {
         let client = reqwest::Client::builder()
             .user_agent("ipgeomancer")
@@ -62,10 +68,15 @@ impl Store {
 
     /// Download the databases from all configured RIRs.
     pub async fn update(&self) -> Result<(), anyhow::Error> {
+        tracing::info!("Updating RIR databases in {}", self.data_dir.display());
+
         for (rir, handler) in &self.rirs {
+            tracing::debug!("Downloading RPSL data for {}", rir.name());
             let data = handler.download_rpsl_db(&self.client).await?;
             self.store_data(*rir, data)?;
+            tracing::info!("Updated RPSL db for {}", rir.name());
         }
+        tracing::info!("RIR databases updated successfully");
         Ok(())
     }
 
@@ -157,12 +168,15 @@ impl Store {
         let mut db = Database::default();
         db.metadata = metadata;
 
+        tracing::info!("Building GeoIP database to {}", path.as_ref().display());
+
         for obj_res in self.all_objects_iter()? {
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {
-                    if let (Some(range), Some(country)) = (inet.inetnum, inet.country) {
-                        for net in &range {
+                    if let (Some(range), Some(country)) = (&inet.inetnum, &inet.country) {
+                        dbg!(&inet);
+                        for net in range {
                             let path = IpAddrWithMask::new(
                                 std::net::IpAddr::V4(net.network()),
                                 net.prefix_len(),
@@ -172,6 +186,8 @@ impl Store {
                             })?;
                             db.insert_node(path, data);
                         }
+                    } else {
+                        tracing::warn!(?inet, "inetnum object without inetnum or country");
                     }
                 }
                 RpslObject::Inet6num(inet) => {
@@ -225,7 +241,7 @@ mod tests {
         }
     }
 
-    impl Rir for MockRir {
+    impl RirProvider for MockRir {
         fn download_rpsl_db<'a>(
             &'a self,
             _client: &'a Client,
@@ -255,7 +271,7 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
             .as_nanos();
         base.push(format!("ipgeomancer_test_{}", t));
         fs::create_dir_all(&base).unwrap();
-        let mut rirs: HashMap<RirKind, Box<dyn crate::Rir>> = HashMap::new();
+        let mut rirs: HashMap<RirKind, Box<dyn crate::RirProvider>> = HashMap::new();
         for rir in RirKind::ALL.iter() {
             rirs.insert(*rir, Box::new(MockRir::new(&mock_rir_data())));
         }
@@ -306,7 +322,7 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
             .as_nanos();
         base.push(format!("ipgeomancer_test_db_{}", t));
         fs::create_dir_all(&base).unwrap();
-        let mut rirs: HashMap<RirKind, Box<dyn crate::Rir>> = HashMap::new();
+        let mut rirs: HashMap<RirKind, Box<dyn crate::RirProvider>> = HashMap::new();
         for rir in RirKind::ALL.iter() {
             rirs.insert(*rir, Box::new(MockRir::new(&mock_rir_data())));
         }

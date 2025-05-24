@@ -1,6 +1,6 @@
 use std::io::Read as _;
 
-use crate::{Client, DbData, Rir};
+use crate::{Client, DbData, RirProvider};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -11,7 +11,7 @@ impl Arin {
     const RPSL_DOWNLOAD_URL: &'static str = "https://ftp.arin.net/pub/rr/arin.db.gz";
 }
 
-impl Rir for Arin {
+impl RirProvider for Arin {
     fn download_rpsl_db<'a>(
         &'a self,
         client: &'a Client,
