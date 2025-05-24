@@ -213,21 +213,34 @@ fn parse_ipv4_range(s: &str) -> Option<IpRange<Ipv4Net>> {
         let start = start.trim().parse::<std::net::Ipv4Addr>().ok()?;
         let end = end.trim().parse::<std::net::Ipv4Addr>().ok()?;
         let mut r = IpRange::new();
-        let mut cur = u32::from(start);
-        let end = u32::from(end);
+        let mut cur = u32::from(start) as u64;
+        let end = u32::from(end) as u64;
         while cur <= end {
-            let mut prefix = 32 - cur.trailing_zeros();
+            let mut prefix = 32 - (cur as u32).trailing_zeros();
             loop {
-                let size = 1u32 << (32 - prefix);
-                if cur & (size - 1) != 0 || cur + size - 1 > end {
+                if prefix == 0 {
+                    // size would overflow u32, but this can only happen when the
+                    // remaining range covers the entire IPv4 space.
+                    if end == u32::MAX as u64 {
+                        break;
+                    } else {
+                        prefix += 1;
+                        continue;
+                    }
+                }
+                let size = 1u64 << (32 - prefix);
+                if (cur & (size - 1)) != 0 || cur + size - 1 > end {
                     prefix += 1;
                 } else {
                     break;
                 }
             }
-            let net = Ipv4Net::new(std::net::Ipv4Addr::from(cur), prefix as u8).ok()?;
+            let net = Ipv4Net::new(std::net::Ipv4Addr::from(cur as u32), prefix as u8).ok()?;
             r.add(net);
-            cur += 1u32 << (32 - prefix);
+            if prefix == 0 {
+                break;
+            }
+            cur += 1u64 << (32 - prefix);
         }
         return Some(r);
     }
@@ -250,6 +263,14 @@ fn parse_ipv6_range(s: &str) -> Option<IpRange<Ipv6Net>> {
         while cur <= end {
             let mut prefix = 128 - cur.trailing_zeros();
             loop {
+                if prefix == 0 {
+                    if end == u128::MAX {
+                        break;
+                    } else {
+                        prefix += 1;
+                        continue;
+                    }
+                }
                 let size = 1u128 << (128 - prefix);
                 if cur & (size - 1) != 0 || cur + size - 1 > end {
                     prefix += 1;
@@ -259,6 +280,9 @@ fn parse_ipv6_range(s: &str) -> Option<IpRange<Ipv6Net>> {
             }
             let net = Ipv6Net::new(std::net::Ipv6Addr::from(cur), prefix as u8).ok()?;
             r.add(net);
+            if prefix == 0 {
+                break;
+            }
             cur += 1u128 << (128 - prefix);
         }
         return Some(r);
@@ -504,6 +528,22 @@ mod tests {
         } else {
             panic!();
         }
+    }
+
+    #[test]
+    fn parse_ipv4_range_full() {
+        let range = parse_ipv4_range("0.0.0.0 - 255.255.255.255").unwrap();
+        let mut expected = IpRange::new();
+        expected.add(Ipv4Net::new("0.0.0.0".parse().unwrap(), 0).unwrap());
+        assert_eq!(range, expected);
+    }
+
+    #[test]
+    fn parse_ipv6_range_full() {
+        let range = parse_ipv6_range(":: - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff").unwrap();
+        let mut expected = IpRange::new();
+        expected.add(Ipv6Net::new("::".parse().unwrap(), 0).unwrap());
+        assert_eq!(range, expected);
     }
 
     #[test]

@@ -171,7 +171,6 @@ impl Store {
         tracing::info!("Building GeoIP database to {}", path.as_ref().display());
 
         for (index, obj_res) in self.all_objects_iter()?.enumerate() {
-            dbg!(index);
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {
@@ -213,7 +212,6 @@ impl Store {
                 }
                 _ => {}
             }
-            dbg!(index);
         }
 
         let file = std::fs::File::create(path)?;

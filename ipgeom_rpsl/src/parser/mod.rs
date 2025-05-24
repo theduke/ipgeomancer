@@ -63,7 +63,6 @@ impl<R: Read> Iterator for ObjectsReadIter<R> {
             if self.done && self.buf.is_empty() {
                 return None;
             }
-            dbg!(self.buf.len(), self.done, self.line_number);
 
             match parse_object(&self.buf, self.done, self.line_number) {
                 Ok((None, rest, lines)) => {
