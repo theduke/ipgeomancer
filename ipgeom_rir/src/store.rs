@@ -145,6 +145,8 @@ impl Store {
             country: String,
         }
 
+        let path = path.as_ref();
+
         let mut metadata = Metadata::default();
         metadata.ip_version = IpVersion::V6;
         metadata.database_type = "GeoIP2-Country".into();
@@ -165,13 +167,12 @@ impl Store {
         let mut db = Database::default();
         db.metadata = metadata;
 
-        tracing::info!("Building GeoIP database to {}", path.as_ref().display());
+        tracing::info!("Building GeoIP database to {}", path.display());
 
         for obj_res in self.all_objects_iter()? {
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {
-                    dbg!(&inet);
                     if let Some(country) = &inet.country {
                         let mut nets = 0;
                         for net in &inet.inetnum {
@@ -219,6 +220,9 @@ impl Store {
         let file = std::fs::File::create(path)?;
         let writer = std::io::BufWriter::new(file);
         db.write_to(writer)?;
+
+        tracing::info!(path=%path.display(), "GeoIP database written successfully");
+
         Ok(())
     }
 }

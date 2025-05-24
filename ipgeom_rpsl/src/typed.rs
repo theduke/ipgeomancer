@@ -228,7 +228,7 @@ fn pop_datetime(
     key: &str,
 ) -> Result<Option<OffsetDateTime>, Error> {
     match pop_single(map, key) {
-        Some(s) => Ok(Some(parse_datetime_flexible(&s)?)),
+        Some(s) => Ok(parse_datetime_flexible(&s).ok()),
         None => Ok(None),
     }
 }
