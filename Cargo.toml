@@ -3,4 +3,5 @@ resolver = "2"
 members = [
   "ipgeom_rir",
   "ipgeom_rpsl",
+  "ipgeom_cli",
 ]
