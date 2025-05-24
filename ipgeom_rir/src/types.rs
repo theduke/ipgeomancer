@@ -1,5 +1,5 @@
 /// Regional Internet Registry enumeration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rir {
     Arin,
     Apnic,
@@ -18,6 +18,22 @@ impl std::fmt::Display for Rir {
             Rir::Afrinic => write!(f, "AFRINIC"),
         }
     }
+}
+
+impl Rir {
+    /// Name of the registry in lowercase form.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Rir::Arin => "arin",
+            Rir::Apnic => "apnic",
+            Rir::Ripe => "ripe",
+            Rir::Lacnic => "lacnic",
+            Rir::Afrinic => "afrinic",
+        }
+    }
+
+    /// Array of all supported registries.
+    pub const ALL: [Rir; 5] = [Rir::Arin, Rir::Apnic, Rir::Ripe, Rir::Lacnic, Rir::Afrinic];
 }
 
 impl std::str::FromStr for Rir {

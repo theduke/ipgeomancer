@@ -1,4 +1,9 @@
+mod store;
 mod types;
+
+use std::pin::Pin;
+
+pub use {self::store::Store, self::types::Rir as RirKind};
 
 mod registry;
 
@@ -6,10 +11,10 @@ type Client = reqwest::Client;
 
 pub trait Rir: std::fmt::Debug + Send + Sync {
     /// Download the latest dump of the RPSL database from the RIR.
-    fn download_rpsl_db(
-        &self,
-        client: &Client,
-    ) -> impl Future<Output = Result<DbData, anyhow::Error>> + Send;
+    fn download_rpsl_db<'a>(
+        &'a self,
+        client: &'a Client,
+    ) -> Pin<Box<dyn Future<Output = Result<DbData, anyhow::Error>> + Send + 'a>>;
 }
 
 pub struct DbData {

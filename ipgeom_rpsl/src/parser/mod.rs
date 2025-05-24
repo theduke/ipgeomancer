@@ -464,7 +464,7 @@ mod tests {
 
     impl std::io::Read for FailReader {
         fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "fail"))
+            Err(std::io::Error::other("fail"))
         }
     }
 
