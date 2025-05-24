@@ -20,4 +20,5 @@ iprange = "0.6.7"
 ipnet = "2.11.0"
 ipgeom_rpsl = { path = "../ipgeom_rpsl" }
 maxminddb-writer = "0.1.0"
+maxminddb = "0.26.0"
 
