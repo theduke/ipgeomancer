@@ -8,7 +8,7 @@ use time::{Date, OffsetDateTime, PrimitiveDateTime, macros::format_description};
 /// Data for an `inetnum` object
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Inetnum {
-    pub inetnum: Option<IpRange<Ipv4Net>>,
+    pub inetnum: IpRange<Ipv4Net>,
     pub netname: Option<String>,
     pub descr: Option<String>,
     pub country: Option<String>,
@@ -24,7 +24,7 @@ pub struct Inetnum {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Inet6num {
-    pub inet6num: Option<IpRange<Ipv6Net>>,
+    pub inet6num: IpRange<Ipv6Net>,
     pub netname: Option<String>,
     pub descr: Option<String>,
     pub country: Option<String>,
@@ -40,7 +40,7 @@ pub struct Inet6num {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AutNum {
-    pub aut_num: Option<String>,
+    pub aut_num: String,
     pub as_name: Option<String>,
     pub descr: Option<String>,
     pub member_of: Vec<String>,
@@ -57,7 +57,7 @@ pub struct AutNum {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Person {
-    pub person: Option<String>,
+    pub person: String,
     pub address: Option<String>,
     pub phone: Option<String>,
     pub fax_no: Option<String>,
@@ -71,7 +71,7 @@ pub struct Person {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Role {
-    pub role: Option<String>,
+    pub role: String,
     pub address: Option<String>,
     pub phone: Option<String>,
     pub fax_no: Option<String>,
@@ -88,7 +88,7 @@ pub struct Role {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Organisation {
-    pub organisation: Option<String>,
+    pub organisation: String,
     pub org_name: Option<String>,
     pub org_type: Option<String>,
     pub address: Option<String>,
@@ -103,7 +103,7 @@ pub struct Organisation {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Mntner {
-    pub mntner: Option<String>,
+    pub mntner: String,
     pub descr: Option<String>,
     pub admin_c: Vec<String>,
     pub tech_c: Vec<String>,
@@ -118,7 +118,7 @@ pub struct Mntner {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Route {
-    pub route: Option<IpRange<Ipv4Net>>,
+    pub route: IpRange<Ipv4Net>,
     pub descr: Option<String>,
     pub origin: Option<String>,
     pub member_of: Vec<String>,
@@ -136,7 +136,7 @@ pub struct Route {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Route6 {
-    pub route6: Option<IpRange<Ipv6Net>>,
+    pub route6: IpRange<Ipv6Net>,
     pub descr: Option<String>,
     pub origin: Option<String>,
     pub member_of: Vec<String>,
@@ -203,18 +203,64 @@ fn pop_datetime(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<Off
 }
 
 fn parse_ipv4_range(s: &str) -> Option<IpRange<Ipv4Net>> {
-    if let Ok(net) = s.trim().parse::<Ipv4Net>() {
+    let trimmed = s.trim();
+    if let Ok(net) = trimmed.parse::<Ipv4Net>() {
         let mut r = IpRange::new();
         r.add(net);
+        return Some(r);
+    }
+    if let Some((start, end)) = trimmed.split_once('-') {
+        let start = start.trim().parse::<std::net::Ipv4Addr>().ok()?;
+        let end = end.trim().parse::<std::net::Ipv4Addr>().ok()?;
+        let mut r = IpRange::new();
+        let mut cur = u32::from(start);
+        let end = u32::from(end);
+        while cur <= end {
+            let mut prefix = 32 - cur.trailing_zeros();
+            loop {
+                let size = 1u32 << (32 - prefix);
+                if cur & (size - 1) != 0 || cur + size - 1 > end {
+                    prefix += 1;
+                } else {
+                    break;
+                }
+            }
+            let net = Ipv4Net::new(std::net::Ipv4Addr::from(cur), prefix as u8).ok()?;
+            r.add(net);
+            cur += 1u32 << (32 - prefix);
+        }
         return Some(r);
     }
     None
 }
 
 fn parse_ipv6_range(s: &str) -> Option<IpRange<Ipv6Net>> {
-    if let Ok(net) = s.trim().parse::<Ipv6Net>() {
+    let trimmed = s.trim();
+    if let Ok(net) = trimmed.parse::<Ipv6Net>() {
         let mut r = IpRange::new();
         r.add(net);
+        return Some(r);
+    }
+    if let Some((start, end)) = trimmed.split_once('-') {
+        let start = start.trim().parse::<std::net::Ipv6Addr>().ok()?;
+        let end = end.trim().parse::<std::net::Ipv6Addr>().ok()?;
+        let mut r = IpRange::new();
+        let mut cur = u128::from(start);
+        let end = u128::from(end);
+        while cur <= end {
+            let mut prefix = 128 - cur.trailing_zeros();
+            loop {
+                let size = 1u128 << (128 - prefix);
+                if cur & (size - 1) != 0 || cur + size - 1 > end {
+                    prefix += 1;
+                } else {
+                    break;
+                }
+            }
+            let net = Ipv6Net::new(std::net::Ipv6Addr::from(cur), prefix as u8).ok()?;
+            r.add(net);
+            cur += 1u128 << (128 - prefix);
+        }
         return Some(r);
     }
     None
@@ -242,8 +288,9 @@ impl TryFrom<Object> for RpslObject {
     fn try_from(obj: Object) -> Result<Self, Self::Error> {
         let mut map = obj.into_attributes();
         if map.contains_key("inetnum") {
+            let inetnum = pop_range4(&mut map, "inetnum").ok_or(())?;
             let res = RpslObject::Inetnum(Inetnum {
-                inetnum: pop_range4(&mut map, "inetnum"),
+                inetnum,
                 netname: pop_single(&mut map, "netname"),
                 descr: pop_text(&mut map, "descr"),
                 country: pop_single(&mut map, "country"),
@@ -260,8 +307,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("inet6num") {
+            let inet6num = pop_range6(&mut map, "inet6num").ok_or(())?;
             let res = RpslObject::Inet6num(Inet6num {
-                inet6num: pop_range6(&mut map, "inet6num"),
+                inet6num,
                 netname: pop_single(&mut map, "netname"),
                 descr: pop_text(&mut map, "descr"),
                 country: pop_single(&mut map, "country"),
@@ -278,8 +326,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("aut-num") {
+            let aut_num = pop_single(&mut map, "aut-num").ok_or(())?;
             let res = RpslObject::AutNum(AutNum {
-                aut_num: pop_single(&mut map, "aut-num"),
+                aut_num,
                 as_name: pop_single(&mut map, "as-name").or_else(|| pop_single(&mut map, "asname")),
                 descr: pop_text(&mut map, "descr"),
                 member_of: pop_multi(&mut map, "member-of"),
@@ -297,8 +346,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("person") {
+            let person = pop_single(&mut map, "person").ok_or(())?;
             let res = RpslObject::Person(Person {
-                person: pop_single(&mut map, "person"),
+                person,
                 address: pop_text(&mut map, "address"),
                 phone: pop_single(&mut map, "phone"),
                 fax_no: pop_single(&mut map, "fax-no"),
@@ -314,8 +364,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("role") {
+            let role = pop_single(&mut map, "role").ok_or(())?;
             let res = RpslObject::Role(Role {
-                role: pop_single(&mut map, "role"),
+                role,
                 address: pop_text(&mut map, "address"),
                 phone: pop_single(&mut map, "phone"),
                 fax_no: pop_single(&mut map, "fax-no"),
@@ -334,9 +385,11 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("organisation") || map.contains_key("organization") {
+            let organisation = pop_single(&mut map, "organisation")
+                .or_else(|| pop_single(&mut map, "organization"))
+                .ok_or(())?;
             let res = RpslObject::Organisation(Organisation {
-                organisation: pop_single(&mut map, "organisation")
-                    .or_else(|| pop_single(&mut map, "organization")),
+                organisation,
                 org_name: pop_single(&mut map, "org-name")
                     .or_else(|| pop_single(&mut map, "orgname")),
                 org_type: pop_single(&mut map, "org-type"),
@@ -354,8 +407,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("mntner") {
+            let mntner = pop_single(&mut map, "mntner").ok_or(())?;
             let res = RpslObject::Mntner(Mntner {
-                mntner: pop_single(&mut map, "mntner"),
+                mntner,
                 descr: pop_text(&mut map, "descr"),
                 admin_c: pop_multi(&mut map, "admin-c"),
                 tech_c: pop_multi(&mut map, "tech-c"),
@@ -372,8 +426,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("route") {
+            let route = pop_net4(&mut map, "route").ok_or(())?;
             let res = RpslObject::Route(Route {
-                route: pop_net4(&mut map, "route"),
+                route,
                 descr: pop_text(&mut map, "descr"),
                 origin: pop_single(&mut map, "origin"),
                 member_of: pop_multi(&mut map, "member-of"),
@@ -392,8 +447,9 @@ impl TryFrom<Object> for RpslObject {
             return Ok(res);
         }
         if map.contains_key("route6") {
+            let route6 = pop_net6(&mut map, "route6").ok_or(())?;
             let res = RpslObject::Route6(Route6 {
-                route6: pop_net6(&mut map, "route6"),
+                route6,
                 descr: pop_text(&mut map, "descr"),
                 origin: pop_single(&mut map, "origin"),
                 member_of: pop_multi(&mut map, "member-of"),
@@ -428,9 +484,23 @@ mod tests {
             assert_eq!(inet.descr.as_deref(), Some("Example"));
             assert_eq!(inet.admin_c, vec!["AC1"]);
             assert_eq!(inet.mnt_by, vec!["MAINT"]);
-            assert_eq!(inet.inetnum, parse_ipv4_range("192.0.2.0/24"));
+            assert_eq!(inet.inetnum, parse_ipv4_range("192.0.2.0/24").unwrap());
             assert_eq!(inet.created, Some(datetime!(2001-01-01 00:00:00 UTC)));
             assert_eq!(inet.last_modified, Some(datetime!(2002-02-02 00:00:00 UTC)));
+        } else {
+            panic!();
+        }
+    }
+
+    #[test]
+    fn convert_inetnum_range() {
+        let data = "inetnum: 193.194.160.0 - 193.194.191.255\n";
+        let obj = first(data);
+        if let RpslObject::Inetnum(inet) = RpslObject::try_from(obj).unwrap() {
+            assert_eq!(
+                inet.inetnum,
+                parse_ipv4_range("193.194.160.0 - 193.194.191.255").unwrap()
+            );
         } else {
             panic!();
         }
@@ -443,7 +513,7 @@ mod tests {
         if let RpslObject::Inet6num(inet) = RpslObject::try_from(obj).unwrap() {
             assert_eq!(inet.netname.as_deref(), Some("V6-NET"));
             assert_eq!(inet.descr.as_deref(), Some("IPv6 net"));
-            assert_eq!(inet.inet6num, parse_ipv6_range("2001:db8::/32"));
+            assert_eq!(inet.inet6num, parse_ipv6_range("2001:db8::/32").unwrap());
         } else {
             panic!();
         }
@@ -454,7 +524,7 @@ mod tests {
         let data = "aut-num: AS65000\nas-name: TEST-AS\ndescr: Example AS\nimport: from AS1 accept ANY\nexport: to AS1 announce ANY\nadmin-c: AC1\ntech-c: TC1\nmnt-by: MAINT\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::AutNum(aut) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(aut.aut_num.as_deref(), Some("AS65000"));
+            assert_eq!(aut.aut_num, "AS65000");
             assert_eq!(aut.as_name.as_deref(), Some("TEST-AS"));
             assert_eq!(aut.import, vec!["from AS1 accept ANY"]);
         } else {
@@ -467,7 +537,7 @@ mod tests {
         let data = "person: John Doe\naddress: 1 Main St\naddress: Town\nphone: +1 555 123\nemail: john@example.com\nnic-hdl: JD1\nmnt-by: MAINT\nchanged: 20200101\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Person(p) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(p.person.as_deref(), Some("John Doe"));
+            assert_eq!(p.person, "John Doe");
             assert_eq!(p.address.as_deref(), Some("1 Main St\nTown"));
             assert_eq!(p.mnt_by, vec!["MAINT"]);
         } else {
@@ -480,7 +550,7 @@ mod tests {
         let data = "role: Net Admin\naddress: 1 Admin St\nphone: +1 555 000\nadmin-c: AC1\ntech-c: TC1\nnic-hdl: NA1\nmnt-by: MAINT\nabuse-mailbox: abuse@example.com\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Role(r) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(r.role.as_deref(), Some("Net Admin"));
+            assert_eq!(r.role, "Net Admin");
             assert_eq!(r.abuse_mailbox.as_deref(), Some("abuse@example.com"));
         } else {
             panic!();
@@ -492,7 +562,7 @@ mod tests {
         let data = "organisation: ORG1\norg-name: Example Org\norg-type: OTHER\naddress: 1 Org St\nemail: org@example.com\nmnt-ref: MAINT\nmnt-by: MAINT\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Organisation(o) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(o.organisation.as_deref(), Some("ORG1"));
+            assert_eq!(o.organisation, "ORG1");
             assert_eq!(o.mnt_by, vec!["MAINT"]);
         } else {
             panic!();
@@ -504,7 +574,7 @@ mod tests {
         let data = "mntner: MAINT-EXAMPLE\ndescr: Maintainer\nadmin-c: AC1\ntech-c: TC1\nupd-to: upd@example.com\nauth: PASSWORD\nmnt-by: MAINT-EXAMPLE\nchanged: 20200101\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Mntner(m) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(m.mntner.as_deref(), Some("MAINT-EXAMPLE"));
+            assert_eq!(m.mntner, "MAINT-EXAMPLE");
             assert_eq!(m.descr.as_deref(), Some("Maintainer"));
             assert_eq!(m.auth, vec!["PASSWORD"]);
         } else {
@@ -517,7 +587,7 @@ mod tests {
         let data = "route: 192.0.2.0/24\norigin: AS65000\nmnt-by: MAINT\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Route(r) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(r.route, parse_ipv4_range("192.0.2.0/24"));
+            assert_eq!(r.route, parse_ipv4_range("192.0.2.0/24").unwrap());
             assert_eq!(r.origin.as_deref(), Some("AS65000"));
         } else {
             panic!();
@@ -529,7 +599,7 @@ mod tests {
         let data = "route6: 2001:db8::/32\norigin: AS65000\nmnt-by: MAINT\nsource: TEST\n";
         let obj = first(data);
         if let RpslObject::Route6(r) = RpslObject::try_from(obj).unwrap() {
-            assert_eq!(r.route6, parse_ipv6_range("2001:db8::/32"));
+            assert_eq!(r.route6, parse_ipv6_range("2001:db8::/32").unwrap());
         } else {
             panic!();
         }

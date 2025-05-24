@@ -170,13 +170,14 @@ impl Store {
 
         tracing::info!("Building GeoIP database to {}", path.as_ref().display());
 
-        for obj_res in self.all_objects_iter()? {
+        for (index, obj_res) in self.all_objects_iter()?.enumerate() {
+            dbg!(index);
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {
-                    if let (Some(range), Some(country)) = (&inet.inetnum, &inet.country) {
-                        dbg!(&inet);
-                        for net in range {
+                    if let Some(country) = &inet.country {
+                        let mut nets = 0;
+                        for net in &inet.inetnum {
                             let path = IpAddrWithMask::new(
                                 std::net::IpAddr::V4(net.network()),
                                 net.prefix_len(),
@@ -185,14 +186,20 @@ impl Store {
                                 country: country.clone(),
                             })?;
                             db.insert_node(path, data);
+                            nets += 1;
+                        }
+                        if nets == 0 {
+                            tracing::warn!(?inet, "inetnum object with no networks");
+                        } else {
+                            tracing::debug!(?inet, nets, "added inetnum object with networks");
                         }
                     } else {
-                        tracing::warn!(?inet, "inetnum object without inetnum or country");
+                        tracing::warn!(?inet, "inetnum object without country");
                     }
                 }
                 RpslObject::Inet6num(inet) => {
-                    if let (Some(range), Some(country)) = (inet.inet6num, inet.country) {
-                        for net in &range {
+                    if let Some(country) = inet.country {
+                        for net in &inet.inet6num {
                             let path = IpAddrWithMask::new(
                                 std::net::IpAddr::V6(net.network()),
                                 net.prefix_len(),
@@ -206,6 +213,7 @@ impl Store {
                 }
                 _ => {}
             }
+            dbg!(index);
         }
 
         let file = std::fs::File::create(path)?;
