@@ -167,11 +167,7 @@ impl Store {
 
         tracing::info!("Building GeoIP database to {}", path.as_ref().display());
 
-<<<<<<< ours
-        for (_index, obj_res) in self.all_objects_iter()?.enumerate() {
-=======
         for obj_res in self.all_objects_iter()? {
->>>>>>> theirs
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {

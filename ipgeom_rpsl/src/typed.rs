@@ -1,5 +1,5 @@
 use crate::Object;
-use anyhow::{Error, anyhow};
+use anyhow::{Context, Error, anyhow, bail};
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
 use serde::Serialize;
@@ -19,6 +19,7 @@ pub struct Inetnum {
     pub mnt_by: Vec<String>,
     pub created: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
+    pub changed: Option<OffsetDateTime>,
     pub source: Option<String>,
     pub org: Option<String>,
 }
@@ -35,6 +36,7 @@ pub struct Inet6num {
     pub mnt_by: Vec<String>,
     pub created: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
+    pub changed: Option<OffsetDateTime>,
     pub source: Option<String>,
     pub org: Option<String>,
 }
@@ -52,6 +54,7 @@ pub struct AutNum {
     pub mnt_by: Vec<String>,
     pub created: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
+    pub changed: Option<OffsetDateTime>,
     pub source: Option<String>,
     pub org: Option<String>,
 }
@@ -67,6 +70,7 @@ pub struct Person {
     pub mnt_by: Vec<String>,
     pub created: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
+    pub changed: Option<OffsetDateTime>,
     pub source: Option<String>,
 }
 
@@ -82,6 +86,7 @@ pub struct Role {
     pub nic_hdl: Option<String>,
     pub mnt_by: Vec<String>,
     pub created: Option<OffsetDateTime>,
+    pub changed: Option<OffsetDateTime>,
     pub last_modified: Option<OffsetDateTime>,
     pub source: Option<String>,
     pub abuse_mailbox: Option<String>,
@@ -162,23 +167,42 @@ pub enum RpslObject {
 }
 
 /// Parse various datetime formats used in RPSL
-fn parse_datetime_flexible(s: &str) -> Result<OffsetDateTime, Error> {
-    if let Ok(dt) = OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339) {
+fn parse_datetime_flexible(s: &str) -> Result<OffsetDateTime, anyhow::Error> {
+    fn parse_exact(s: &str) -> Result<OffsetDateTime, anyhow::Error> {
+        if let Ok(dt) = OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339) {
+            return Ok(dt);
+        }
+        let yyyymmdd_hhmmss =
+            format_description!("[year][month][day] [hour repr:24][minute][second]");
+        if let Ok(pdt) = PrimitiveDateTime::parse(s, &yyyymmdd_hhmmss) {
+            return Ok(pdt.assume_utc());
+        }
+        let yyyymmdd = format_description!("[year][month][day]");
+        if let Ok(date) = Date::parse(s, yyyymmdd) {
+            return Ok(date.midnight().assume_utc());
+        }
+        let yyyy_mm_dd = format_description!("[year]-[month]-[day]");
+        if let Ok(date) = Date::parse(s, &yyyy_mm_dd) {
+            return Ok(date.midnight().assume_utc());
+        }
+
+        bail!("invalid datetime format: {s}");
+    }
+
+    let trimmed = s.trim();
+    if let Ok(dt) = parse_exact(trimmed) {
         return Ok(dt);
     }
-    let yyyymmdd_hhmmss = format_description!("[year][month][day] [hour repr:24][minute][second]");
-    if let Ok(pdt) = PrimitiveDateTime::parse(s, &yyyymmdd_hhmmss) {
-        return Ok(pdt.assume_utc());
+
+    if let Some(last) = trimmed.split_whitespace().last() {
+        if last != trimmed {
+            if let Ok(dt) = parse_exact(last) {
+                return Ok(dt);
+            }
+        }
     }
-    let yyyymmdd = format_description!("[year][month][day]");
-    if let Ok(date) = Date::parse(s, yyyymmdd) {
-        return Ok(date.midnight().assume_utc());
-    }
-    let yyyy_mm_dd = format_description!("[year]-[month]-[day]");
-    if let Ok(date) = Date::parse(s, &yyyy_mm_dd) {
-        return Ok(date.midnight().assume_utc());
-    }
-    Err(anyhow!("invalid datetime: {s}"))
+
+    bail!("invalid datetime format: {s}")
 }
 
 fn pop_single(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<String> {
@@ -345,7 +369,7 @@ impl TryFrom<Object> for RpslObject {
         let mut map = obj.into_attributes();
         match obj_type {
             crate::ObjectType::Inetnum => {
-                let inetnum = pop_range4(&mut map, "inetnum").ok_or(())?;
+                let inetnum = pop_range4(&mut map, "inetnum")?.context("missing inetnum range")?;
                 let res = RpslObject::Inetnum(Inetnum {
                     inetnum,
                     netname: pop_single(&mut map, "netname"),
@@ -355,16 +379,17 @@ impl TryFrom<Object> for RpslObject {
                     tech_c: pop_multi(&mut map, "tech-c"),
                     status: pop_single(&mut map, "status"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created"),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
+                    changed: pop_datetime(&mut map, "changed")?,
                     source: pop_single(&mut map, "source"),
                     org: pop_single(&mut map, "org"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Inet6num => {
-                let inet6num = pop_range6(&mut map, "inet6num").ok_or(())?;
+                let inet6num =
+                    pop_range6(&mut map, "inet6num")?.context("missing inet6num range")?;
                 let res = RpslObject::Inet6num(Inet6num {
                     inet6num,
                     netname: pop_single(&mut map, "netname"),
@@ -374,16 +399,16 @@ impl TryFrom<Object> for RpslObject {
                     tech_c: pop_multi(&mut map, "tech-c"),
                     status: pop_single(&mut map, "status"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created"),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
+                    changed: pop_datetime(&mut map, "changed")?,
                     source: pop_single(&mut map, "source"),
                     org: pop_single(&mut map, "org"),
                 });
                 Ok(res)
             }
             crate::ObjectType::AutNum => {
-                let aut_num = pop_single(&mut map, "aut-num").ok_or(())?;
+                let aut_num = pop_single(&mut map, "aut-num").context("missing aut-num")?;
                 let res = RpslObject::AutNum(AutNum {
                     aut_num,
                     as_name: pop_single(&mut map, "as-name")
@@ -395,16 +420,16 @@ impl TryFrom<Object> for RpslObject {
                     admin_c: pop_multi(&mut map, "admin-c"),
                     tech_c: pop_multi(&mut map, "tech-c"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created"),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
+                    changed: pop_datetime(&mut map, "changed")?,
                     source: pop_single(&mut map, "source"),
                     org: pop_single(&mut map, "org"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Person => {
-                let person = pop_single(&mut map, "person").ok_or(())?;
+                let person = pop_single(&mut map, "person").context("missing person")?;
                 let res = RpslObject::Person(Person {
                     person,
                     address: pop_text(&mut map, "address"),
@@ -413,16 +438,15 @@ impl TryFrom<Object> for RpslObject {
                     email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
                     nic_hdl: pop_single(&mut map, "nic-hdl"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
+                    changed: pop_datetime(&mut map, "changed")?,
                     source: pop_single(&mut map, "source"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Role => {
-                let role = pop_single(&mut map, "role").ok_or(())?;
+                let role = pop_single(&mut map, "role").context("missing role")?;
                 let res = RpslObject::Role(Role {
                     role,
                     address: pop_text(&mut map, "address"),
@@ -433,10 +457,9 @@ impl TryFrom<Object> for RpslObject {
                     tech_c: pop_multi(&mut map, "tech-c"),
                     nic_hdl: pop_single(&mut map, "nic-hdl"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
+                    changed: pop_datetime(&mut map, "changed")?,
                     source: pop_single(&mut map, "source"),
                     abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
                 });
@@ -445,7 +468,7 @@ impl TryFrom<Object> for RpslObject {
             crate::ObjectType::Organisation => {
                 let organisation = pop_single(&mut map, "organisation")
                     .or_else(|| pop_single(&mut map, "organization"))
-                    .ok_or(())?;
+                    .context("missing organisation/organization")?;
                 let res = RpslObject::Organisation(Organisation {
                     organisation,
                     org_name: pop_single(&mut map, "org-name")
@@ -456,16 +479,14 @@ impl TryFrom<Object> for RpslObject {
                     abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
                     mnt_ref: pop_multi(&mut map, "mnt-ref"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
                     source: pop_single(&mut map, "source"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Mntner => {
-                let mntner = pop_single(&mut map, "mntner").ok_or(())?;
+                let mntner = pop_single(&mut map, "mntner").context("missing mntner")?;
                 let res = RpslObject::Mntner(Mntner {
                     mntner,
                     descr: pop_text(&mut map, "descr"),
@@ -475,16 +496,14 @@ impl TryFrom<Object> for RpslObject {
                     mnt_nfy: pop_multi(&mut map, "mnt-nfy"),
                     auth: pop_multi(&mut map, "auth"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
                     source: pop_single(&mut map, "source"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Route => {
-                let route = pop_net4(&mut map, "route").ok_or(())?;
+                let route = pop_net4(&mut map, "route")?.context("missing route")?;
                 let res = RpslObject::Route(Route {
                     route,
                     descr: pop_text(&mut map, "descr"),
@@ -497,24 +516,22 @@ impl TryFrom<Object> for RpslObject {
                     components: pop_single(&mut map, "components"),
                     holes: pop_multi(&mut map, "holes"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created"),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
                     source: pop_single(&mut map, "source"),
                 });
                 Ok(res)
             }
             crate::ObjectType::Route6 => {
-                let route6 = pop_net6(&mut map, "route6").ok_or(())?;
+                let route6 = pop_net6(&mut map, "route6")?.context("missing route6")?;
                 let res = RpslObject::Route6(Route6 {
                     route6,
                     descr: pop_text(&mut map, "descr"),
                     origin: pop_single(&mut map, "origin"),
                     member_of: pop_multi(&mut map, "member-of"),
                     mnt_by: pop_multi(&mut map, "mnt-by"),
-                    created: pop_datetime(&mut map, "created"),
-                    last_modified: pop_datetime(&mut map, "last-modified")
-                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    created: pop_datetime(&mut map, "created")?,
+                    last_modified: pop_datetime(&mut map, "last-modified")?,
                     source: pop_single(&mut map, "source"),
                 });
                 Ok(res)
@@ -692,6 +709,18 @@ mod tests {
                 assert!(o.get("poem").is_some());
             }
             _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn parse_changed_with_prefix() {
+        let data = "person: John\nchanged: ripe-dbm@ripe.net 20040521\nsource: TEST\n";
+        let obj = first(data);
+        if let RpslObject::Person(p) = RpslObject::try_from(obj).unwrap() {
+            assert_eq!(p.changed, Some(datetime!(2004-05-21 00:00:00 UTC)));
+            assert_eq!(p.last_modified, None);
+        } else {
+            panic!();
         }
     }
 }
