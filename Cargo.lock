@@ -468,6 +468,7 @@ dependencies = [
  "ipnet",
  "ipnetwork",
  "iprange",
+ "maxminddb-writer",
  "reqwest",
  "rpsl-rs",
  "serde_json",
@@ -555,6 +556,16 @@ name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+
+[[package]]
+name = "maxminddb-writer"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ec8398c2106577073b9dfe24313123f5a120e2e21b4e68abd26eb00a2f0c769"
+dependencies = [
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "memchr"
