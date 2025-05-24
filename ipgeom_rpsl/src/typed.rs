@@ -341,235 +341,189 @@ impl TryFrom<Object> for RpslObject {
     type Error = anyhow::Error;
 
     fn try_from(obj: Object) -> Result<Self, Self::Error> {
+        let obj_type = obj.obj_type().clone();
         let mut map = obj.into_attributes();
-        if map.contains_key("inetnum") {
-            let inetnum =
-                pop_range4(&mut map, "inetnum")?.ok_or_else(|| anyhow!("missing inetnum"))?;
-            let created = pop_datetime(&mut map, "created")?;
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Inetnum(Inetnum {
-                inetnum,
-                netname: pop_single(&mut map, "netname"),
-                descr: pop_text(&mut map, "descr"),
-                country: pop_single(&mut map, "country"),
-                admin_c: pop_multi(&mut map, "admin-c"),
-                tech_c: pop_multi(&mut map, "tech-c"),
-                status: pop_single(&mut map, "status"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-                org: pop_single(&mut map, "org"),
-            });
-            return Ok(res);
+        match obj_type {
+            crate::ObjectType::Inetnum => {
+                let inetnum = pop_range4(&mut map, "inetnum").ok_or(())?;
+                let res = RpslObject::Inetnum(Inetnum {
+                    inetnum,
+                    netname: pop_single(&mut map, "netname"),
+                    descr: pop_text(&mut map, "descr"),
+                    country: pop_single(&mut map, "country"),
+                    admin_c: pop_multi(&mut map, "admin-c"),
+                    tech_c: pop_multi(&mut map, "tech-c"),
+                    status: pop_single(&mut map, "status"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created"),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                    org: pop_single(&mut map, "org"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Inet6num => {
+                let inet6num = pop_range6(&mut map, "inet6num").ok_or(())?;
+                let res = RpslObject::Inet6num(Inet6num {
+                    inet6num,
+                    netname: pop_single(&mut map, "netname"),
+                    descr: pop_text(&mut map, "descr"),
+                    country: pop_single(&mut map, "country"),
+                    admin_c: pop_multi(&mut map, "admin-c"),
+                    tech_c: pop_multi(&mut map, "tech-c"),
+                    status: pop_single(&mut map, "status"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created"),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                    org: pop_single(&mut map, "org"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::AutNum => {
+                let aut_num = pop_single(&mut map, "aut-num").ok_or(())?;
+                let res = RpslObject::AutNum(AutNum {
+                    aut_num,
+                    as_name: pop_single(&mut map, "as-name")
+                        .or_else(|| pop_single(&mut map, "asname")),
+                    descr: pop_text(&mut map, "descr"),
+                    member_of: pop_multi(&mut map, "member-of"),
+                    import: pop_multi(&mut map, "import"),
+                    export: pop_multi(&mut map, "export"),
+                    admin_c: pop_multi(&mut map, "admin-c"),
+                    tech_c: pop_multi(&mut map, "tech-c"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created"),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                    org: pop_single(&mut map, "org"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Person => {
+                let person = pop_single(&mut map, "person").ok_or(())?;
+                let res = RpslObject::Person(Person {
+                    person,
+                    address: pop_text(&mut map, "address"),
+                    phone: pop_single(&mut map, "phone"),
+                    fax_no: pop_single(&mut map, "fax-no"),
+                    email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
+                    nic_hdl: pop_single(&mut map, "nic-hdl"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Role => {
+                let role = pop_single(&mut map, "role").ok_or(())?;
+                let res = RpslObject::Role(Role {
+                    role,
+                    address: pop_text(&mut map, "address"),
+                    phone: pop_single(&mut map, "phone"),
+                    fax_no: pop_single(&mut map, "fax-no"),
+                    email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
+                    admin_c: pop_multi(&mut map, "admin-c"),
+                    tech_c: pop_multi(&mut map, "tech-c"),
+                    nic_hdl: pop_single(&mut map, "nic-hdl"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                    abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Organisation => {
+                let organisation = pop_single(&mut map, "organisation")
+                    .or_else(|| pop_single(&mut map, "organization"))
+                    .ok_or(())?;
+                let res = RpslObject::Organisation(Organisation {
+                    organisation,
+                    org_name: pop_single(&mut map, "org-name")
+                        .or_else(|| pop_single(&mut map, "orgname")),
+                    org_type: pop_single(&mut map, "org-type"),
+                    address: pop_text(&mut map, "address"),
+                    email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
+                    abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
+                    mnt_ref: pop_multi(&mut map, "mnt-ref"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Mntner => {
+                let mntner = pop_single(&mut map, "mntner").ok_or(())?;
+                let res = RpslObject::Mntner(Mntner {
+                    mntner,
+                    descr: pop_text(&mut map, "descr"),
+                    admin_c: pop_multi(&mut map, "admin-c"),
+                    tech_c: pop_multi(&mut map, "tech-c"),
+                    upd_to: pop_multi(&mut map, "upd-to"),
+                    mnt_nfy: pop_multi(&mut map, "mnt-nfy"),
+                    auth: pop_multi(&mut map, "auth"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Route => {
+                let route = pop_net4(&mut map, "route").ok_or(())?;
+                let res = RpslObject::Route(Route {
+                    route,
+                    descr: pop_text(&mut map, "descr"),
+                    origin: pop_single(&mut map, "origin"),
+                    member_of: pop_multi(&mut map, "member-of"),
+                    inject: pop_multi(&mut map, "inject"),
+                    aggr_mtd: pop_single(&mut map, "aggr-mtd"),
+                    aggr_bndry: pop_single(&mut map, "aggr-bndry"),
+                    export_comps: pop_single(&mut map, "export-comps"),
+                    components: pop_single(&mut map, "components"),
+                    holes: pop_multi(&mut map, "holes"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created"),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Route6 => {
+                let route6 = pop_net6(&mut map, "route6").ok_or(())?;
+                let res = RpslObject::Route6(Route6 {
+                    route6,
+                    descr: pop_text(&mut map, "descr"),
+                    origin: pop_single(&mut map, "origin"),
+                    member_of: pop_multi(&mut map, "member-of"),
+                    mnt_by: pop_multi(&mut map, "mnt-by"),
+                    created: pop_datetime(&mut map, "created"),
+                    last_modified: pop_datetime(&mut map, "last-modified")
+                        .or_else(|| pop_datetime(&mut map, "changed")),
+                    source: pop_single(&mut map, "source"),
+                });
+                Ok(res)
+            }
+            crate::ObjectType::Other(name) => Ok(RpslObject::Other(Object::from_attributes(
+                crate::ObjectType::Other(name),
+                map,
+            ))),
         }
-        if map.contains_key("inet6num") {
-            let inet6num =
-                pop_range6(&mut map, "inet6num")?.ok_or_else(|| anyhow!("missing inet6num"))?;
-            let created = pop_datetime(&mut map, "created")?;
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Inet6num(Inet6num {
-                inet6num,
-                netname: pop_single(&mut map, "netname"),
-                descr: pop_text(&mut map, "descr"),
-                country: pop_single(&mut map, "country"),
-                admin_c: pop_multi(&mut map, "admin-c"),
-                tech_c: pop_multi(&mut map, "tech-c"),
-                status: pop_single(&mut map, "status"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-                org: pop_single(&mut map, "org"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("aut-num") {
-            let aut_num =
-                pop_single(&mut map, "aut-num").ok_or_else(|| anyhow!("missing aut-num"))?;
-            let created = pop_datetime(&mut map, "created")?;
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::AutNum(AutNum {
-                aut_num,
-                as_name: pop_single(&mut map, "as-name").or_else(|| pop_single(&mut map, "asname")),
-                descr: pop_text(&mut map, "descr"),
-                member_of: pop_multi(&mut map, "member-of"),
-                import: pop_multi(&mut map, "import"),
-                export: pop_multi(&mut map, "export"),
-                admin_c: pop_multi(&mut map, "admin-c"),
-                tech_c: pop_multi(&mut map, "tech-c"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-                org: pop_single(&mut map, "org"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("person") {
-            let person = pop_single(&mut map, "person").ok_or_else(|| anyhow!("missing person"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Person(Person {
-                person,
-                address: pop_text(&mut map, "address"),
-                phone: pop_single(&mut map, "phone"),
-                fax_no: pop_single(&mut map, "fax-no"),
-                email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
-                nic_hdl: pop_single(&mut map, "nic-hdl"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("role") {
-            let role = pop_single(&mut map, "role").ok_or_else(|| anyhow!("missing role"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Role(Role {
-                role,
-                address: pop_text(&mut map, "address"),
-                phone: pop_single(&mut map, "phone"),
-                fax_no: pop_single(&mut map, "fax-no"),
-                email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
-                admin_c: pop_multi(&mut map, "admin-c"),
-                tech_c: pop_multi(&mut map, "tech-c"),
-                nic_hdl: pop_single(&mut map, "nic-hdl"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-                abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("organisation") || map.contains_key("organization") {
-            let organisation = pop_single(&mut map, "organisation")
-                .or_else(|| pop_single(&mut map, "organization"))
-                .ok_or_else(|| anyhow!("missing organisation"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Organisation(Organisation {
-                organisation,
-                org_name: pop_single(&mut map, "org-name")
-                    .or_else(|| pop_single(&mut map, "orgname")),
-                org_type: pop_single(&mut map, "org-type"),
-                address: pop_text(&mut map, "address"),
-                email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
-                abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
-                mnt_ref: pop_multi(&mut map, "mnt-ref"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("mntner") {
-            let mntner = pop_single(&mut map, "mntner").ok_or_else(|| anyhow!("missing mntner"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Mntner(Mntner {
-                mntner,
-                descr: pop_text(&mut map, "descr"),
-                admin_c: pop_multi(&mut map, "admin-c"),
-                tech_c: pop_multi(&mut map, "tech-c"),
-                upd_to: pop_multi(&mut map, "upd-to"),
-                mnt_nfy: pop_multi(&mut map, "mnt-nfy"),
-                auth: pop_multi(&mut map, "auth"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("route") {
-            let route = pop_net4(&mut map, "route")?.ok_or_else(|| anyhow!("missing route"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Route(Route {
-                route,
-                descr: pop_text(&mut map, "descr"),
-                origin: pop_single(&mut map, "origin"),
-                member_of: pop_multi(&mut map, "member-of"),
-                inject: pop_multi(&mut map, "inject"),
-                aggr_mtd: pop_single(&mut map, "aggr-mtd"),
-                aggr_bndry: pop_single(&mut map, "aggr-bndry"),
-                export_comps: pop_single(&mut map, "export-comps"),
-                components: pop_single(&mut map, "components"),
-                holes: pop_multi(&mut map, "holes"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-            });
-            return Ok(res);
-        }
-        if map.contains_key("route6") {
-            let route6 = pop_net6(&mut map, "route6")?.ok_or_else(|| anyhow!("missing route6"))?;
-            let created = match pop_datetime(&mut map, "created")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let last_modified = match pop_datetime(&mut map, "last-modified")? {
-                Some(dt) => Some(dt),
-                None => pop_datetime(&mut map, "changed")?,
-            };
-            let res = RpslObject::Route6(Route6 {
-                route6,
-                descr: pop_text(&mut map, "descr"),
-                origin: pop_single(&mut map, "origin"),
-                member_of: pop_multi(&mut map, "member-of"),
-                mnt_by: pop_multi(&mut map, "mnt-by"),
-                created,
-                last_modified,
-                source: pop_single(&mut map, "source"),
-            });
-            return Ok(res);
-        }
-        Ok(RpslObject::Other(Object::from_attributes(map)))
     }
 }
 

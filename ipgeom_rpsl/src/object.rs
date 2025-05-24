@@ -1,22 +1,50 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-/// RPSL object
+/// Known RPSL object types.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Object {
-    attributes: HashMap<String, Vec<String>>,
+pub enum ObjectType {
+    Inetnum,
+    Inet6num,
+    AutNum,
+    Person,
+    Role,
+    Organisation,
+    Mntner,
+    Route,
+    Route6,
+    Other(String),
 }
 
-impl Default for Object {
-    fn default() -> Self {
-        Self::new()
+impl ObjectType {
+    pub fn from_key(key: &str) -> Self {
+        match key {
+            "inetnum" => ObjectType::Inetnum,
+            "inet6num" => ObjectType::Inet6num,
+            "aut-num" => ObjectType::AutNum,
+            "person" => ObjectType::Person,
+            "role" => ObjectType::Role,
+            "organisation" | "organization" => ObjectType::Organisation,
+            "mntner" => ObjectType::Mntner,
+            "route" => ObjectType::Route,
+            "route6" => ObjectType::Route6,
+            other => ObjectType::Other(other.to_string()),
+        }
     }
 }
 
+/// RPSL object
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Object {
+    obj_type: ObjectType,
+    attributes: HashMap<String, Vec<String>>,
+}
+
 impl Object {
-    /// Create a new RPSL object
-    pub fn new() -> Self {
+    /// Create a new RPSL object with the given type
+    pub fn new(obj_type: ObjectType) -> Self {
         Object {
+            obj_type,
             attributes: HashMap::new(),
         }
     }
@@ -24,6 +52,11 @@ impl Object {
     /// Add an attribute to the object
     pub fn add(&mut self, key: String, value: String) {
         self.attributes.entry(key).or_default().push(value);
+    }
+
+    /// Get the type of this RPSL object
+    pub fn obj_type(&self) -> &ObjectType {
+        &self.obj_type
     }
 
     pub fn get(&self, key: &str) -> Option<&[String]> {
@@ -40,9 +73,12 @@ impl Object {
         self.attributes
     }
 
-    /// Create an object from an attribute map
-    pub fn from_attributes(map: HashMap<String, Vec<String>>) -> Self {
-        Object { attributes: map }
+    /// Create an object from an attribute map and a type
+    pub fn from_attributes(obj_type: ObjectType, map: HashMap<String, Vec<String>>) -> Self {
+        Object {
+            obj_type,
+            attributes: map,
+        }
     }
 
     /// Convert the object back into an RPSL formatted string

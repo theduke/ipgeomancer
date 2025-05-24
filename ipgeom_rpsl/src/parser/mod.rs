@@ -147,6 +147,7 @@ fn parse_object(input: &str, eof: bool, start_line: usize) -> ParseResult<Object
     let mut rest = input;
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     let mut current_key: Option<String> = None;
+    let mut obj_type: Option<crate::ObjectType> = None;
     let mut started = false;
     let mut terminated = false;
     let mut lines_consumed = 0usize;
@@ -212,6 +213,9 @@ fn parse_object(input: &str, eof: bool, start_line: usize) -> ParseResult<Object
         if let Some(pos) = trimmed.find(':') {
             let key = trimmed[..pos].trim().to_lowercase();
             let value = trimmed[pos + 1..].trim().to_string();
+            if obj_type.is_none() {
+                obj_type = Some(crate::ObjectType::from_key(&key));
+            }
             map.entry(key.clone()).or_default().push(value);
             current_key = Some(key);
         } else if let Some(key) = &current_key {
@@ -252,7 +256,8 @@ fn parse_object(input: &str, eof: bool, start_line: usize) -> ParseResult<Object
         if !terminated && !eof && rest.is_empty() {
             return Err(ParseError::Incomplete { line: line_no });
         }
-        let mut obj = Object::new();
+        let obj_type = obj_type.unwrap_or_else(|| crate::ObjectType::Other(String::new()));
+        let mut obj = Object::new(obj_type);
         for (k, vals) in map {
             for v in vals {
                 obj.add(k.clone(), v);

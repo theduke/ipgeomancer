@@ -3,7 +3,7 @@ mod parser;
 mod typed;
 
 pub use self::{
-    object::Object,
+    object::{Object, ObjectType},
     parser::{
         MalformedLineError, ObjectsIter, ObjectsReadIter, ParseError, parse_objects,
         parse_objects_iter, parse_objects_read_iter,
