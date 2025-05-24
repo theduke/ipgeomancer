@@ -1,4 +1,3 @@
-// mod rpsl;
 mod types;
 
 mod registry;
