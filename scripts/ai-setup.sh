@@ -21,7 +21,7 @@ echo "Installing cargo-binstall..."
 curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
 echo "Installing cargo-tarpaulin..."
-cargo binstall cargo-tarpaulin
+cargo binstall --no-confirm cargo-tarpaulin
 
 # Fetch Rust dependencies
 
