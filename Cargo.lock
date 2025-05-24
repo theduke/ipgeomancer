@@ -472,6 +472,7 @@ dependencies = [
  "maxminddb-writer",
  "reqwest",
  "rpsl-rs",
+ "serde",
  "serde_json",
  "thiserror 1.0.69",
  "time",

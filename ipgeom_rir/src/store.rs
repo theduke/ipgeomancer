@@ -121,6 +121,82 @@ impl Store {
         }
         Ok(iters.into_iter().flatten())
     }
+
+    /// Build a GeoIP2 database from all stored objects.
+    pub fn write_geoip_db<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), anyhow::Error> {
+        use maxminddb_writer::{
+            Database,
+            metadata::{IpVersion, Metadata},
+            paths::IpAddrWithMask,
+        };
+        use serde::Serialize;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        #[derive(Serialize)]
+        struct Record {
+            country: String,
+        }
+
+        let mut metadata = Metadata::default();
+        metadata.ip_version = IpVersion::V6;
+        metadata.database_type = "GeoIP2-Country".into();
+        metadata.languages = vec!["en".into()];
+        metadata.binary_format_major_version = 2;
+        metadata.binary_format_minor_version = 0;
+        metadata.build_epoch = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        metadata.description = [(
+            "en".to_string(),
+            "ipgeomancer generated geoip database".to_string(),
+        )]
+        .into_iter()
+        .collect();
+
+        let mut db = Database::default();
+        db.metadata = metadata;
+
+        for obj_res in self.all_objects_iter()? {
+            let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
+            match obj {
+                RpslObject::Inetnum(inet) => {
+                    if let (Some(range), Some(country)) = (inet.inetnum, inet.country) {
+                        for net in &range {
+                            let path = IpAddrWithMask::new(
+                                std::net::IpAddr::V4(net.network()),
+                                net.prefix_len(),
+                            );
+                            let data = db.insert_value(Record {
+                                country: country.clone(),
+                            })?;
+                            db.insert_node(path, data);
+                        }
+                    }
+                }
+                RpslObject::Inet6num(inet) => {
+                    if let (Some(range), Some(country)) = (inet.inet6num, inet.country) {
+                        for net in &range {
+                            let path = IpAddrWithMask::new(
+                                std::net::IpAddr::V6(net.network()),
+                                net.prefix_len(),
+                            );
+                            let data = db.insert_value(Record {
+                                country: country.clone(),
+                            })?;
+                            db.insert_node(path, data);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let file = std::fs::File::create(path)?;
+        let writer = std::io::BufWriter::new(file);
+        db.write_to(writer)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -165,7 +241,9 @@ mod tests {
     }
 
     pub fn mock_rir_data() -> String {
-        "inetnum: 192.0.2.0/24\nnetname: TEST-NET\nsource: TST\n\n".to_string()
+        "inetnum: 192.0.2.0/24\nnetname: TEST-NET\ncountry: ZZ\nsource: TST\n\n\
+inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
+            .to_string()
     }
 
     #[tokio::test]
@@ -193,6 +271,12 @@ mod tests {
             } else {
                 panic!("unexpected object");
             }
+            let obj = iter.next().unwrap().unwrap();
+            if let ipgeom_rpsl::RpslObject::Inet6num(inet) = obj {
+                assert_eq!(inet.netname.as_deref(), Some("V6-NET"));
+            } else {
+                panic!("unexpected object");
+            }
             assert!(iter.next().is_none());
         }
 
@@ -203,7 +287,37 @@ mod tests {
         } else {
             panic!("unexpected object");
         }
+        let obj = all.next().unwrap().unwrap();
+        if let ipgeom_rpsl::RpslObject::Inet6num(inet) = obj {
+            assert_eq!(inet.netname.as_deref(), Some("V6-NET"));
+        } else {
+            panic!("unexpected object");
+        }
         let count = all.count();
-        assert_eq!(count, RirKind::ALL.len() - 1);
+        assert_eq!(count, RirKind::ALL.len() * 2 - 2);
+    }
+
+    #[tokio::test]
+    async fn generate_geoip_db_file() {
+        let mut base = std::env::temp_dir();
+        let t = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        base.push(format!("ipgeomancer_test_db_{}", t));
+        fs::create_dir_all(&base).unwrap();
+        let mut rirs: HashMap<RirKind, Box<dyn crate::Rir>> = HashMap::new();
+        for rir in RirKind::ALL.iter() {
+            rirs.insert(*rir, Box::new(MockRir::new(&mock_rir_data())));
+        }
+
+        let store = Store::with_rirs(&base, rirs);
+        store.update().await.unwrap();
+
+        let db_path = base.join("geoip.mmdb");
+        store.write_geoip_db(&db_path).unwrap();
+
+        let meta = fs::metadata(&db_path).unwrap();
+        assert!(meta.len() > 0);
     }
 }
