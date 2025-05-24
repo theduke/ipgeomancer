@@ -24,6 +24,9 @@ enum Commands {
     /// Query GeoIP database files
     #[command(subcommand)]
     Ipdb(cmd::ipdb::IpdbCmd),
+    /// Work with RPSL files
+    #[command(subcommand)]
+    Rpsl(cmd::rpsl::RpslCmd),
 }
 
 fn main() -> Result<()> {
@@ -39,6 +42,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Store(cmd) => cmd::store::handle(cli.data_dir, cmd)?,
         Commands::Ipdb(cmd) => cmd::ipdb::handle(cmd)?,
+        Commands::Rpsl(cmd) => cmd::rpsl::handle(cmd)?,
     }
 
     Ok(())
