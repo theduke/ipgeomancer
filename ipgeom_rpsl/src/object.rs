@@ -25,4 +25,19 @@ impl Object {
     pub fn get(&self, key: &str) -> Option<&[String]> {
         self.attributes.get(key).map(|v| v.as_slice())
     }
+
+    /// Get a reference to the underlying attribute map
+    pub fn attributes(&self) -> &HashMap<String, Vec<String>> {
+        &self.attributes
+    }
+
+    /// Consume the object and return the underlying attribute map
+    pub fn into_attributes(self) -> HashMap<String, Vec<String>> {
+        self.attributes
+    }
+
+    /// Create an object from an attribute map
+    pub fn from_attributes(map: HashMap<String, Vec<String>>) -> Self {
+        Object { attributes: map }
+    }
 }

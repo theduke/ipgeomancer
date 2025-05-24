@@ -477,6 +477,11 @@ dependencies = [
 [[package]]
 name = "ipgeom_rpsl"
 version = "0.1.0"
+dependencies = [
+ "ipnet",
+ "iprange",
+ "time",
+]
 
 [[package]]
 name = "ipnet"
