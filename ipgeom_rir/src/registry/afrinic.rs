@@ -1,6 +1,6 @@
 use std::io::Read as _;
 
-use crate::{Client, Rir};
+use crate::{Client, DbData, Rir};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Afrinic {}
@@ -10,7 +10,7 @@ impl Afrinic {
 }
 
 impl Rir for Afrinic {
-    async fn download_rpsl_db(&self, client: &Client) -> Result<String, anyhow::Error> {
+    async fn download_rpsl_db(&self, client: &Client) -> Result<DbData, anyhow::Error> {
         let res = client
             .get(Self::RPSL_DOWNLOAD_URL)
             .header(reqwest::header::ACCEPT_ENCODING, "gzip")
@@ -24,7 +24,12 @@ impl Rir for Afrinic {
         let mut output = String::new();
         flate2::read::GzDecoder::new(reader).read_to_string(&mut output)?;
 
-        Ok(output)
+        let data = DbData {
+            gzip: false,
+            reader: Box::new(std::io::Cursor::new(output)),
+        };
+
+        Ok(data)
     }
 }
 

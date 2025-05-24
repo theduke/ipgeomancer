@@ -9,5 +9,11 @@ pub trait Rir: std::fmt::Debug + Send + Sync {
     fn download_rpsl_db(
         &self,
         client: &Client,
-    ) -> impl Future<Output = Result<String, anyhow::Error>> + Send;
+    ) -> impl Future<Output = Result<DbData, anyhow::Error>> + Send;
+}
+
+pub struct DbData {
+    /// If the data is gzip-compressed.
+    pub gzip: bool,
+    pub reader: Box<dyn std::io::Read + Send + Sync>,
 }
