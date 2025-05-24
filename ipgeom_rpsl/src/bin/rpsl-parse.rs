@@ -1,8 +1,9 @@
 use ipgeom_rpsl::{parse_objects_iter, RpslObject};
 use serde_json;
+use ipgeom_rpsl::parse_objects_read_iter;
 use std::env;
-use std::fs;
-use std::io;
+use std::fs::File;
+use std::io::{self, BufReader};
 
 enum OutputFormat {
     Rpsl,
@@ -31,9 +32,10 @@ fn main() -> io::Result<()> {
     }
 
     let path = path.expect("missing path");
-    let bytes = fs::read(path)?;
-    let data = String::from_utf8_lossy(&bytes);
-    for res in parse_objects_iter(&data) {
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    for res in parse_objects_read_iter(reader) {
         match res {
             Ok(obj) => {
                 if typed {

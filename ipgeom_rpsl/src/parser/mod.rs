@@ -1,5 +1,6 @@
 use crate::Object;
 use std::collections::HashMap;
+use std::io::Read;
 
 /// Result type returned by parser helper functions.
 pub type ParseResult<'a, T> = Result<(Option<T>, &'a str), ParseError>;
@@ -14,6 +15,87 @@ pub fn parse_objects_iter(input: &str) -> ObjectsIter<'_> {
     ObjectsIter { input }
 }
 
+/// Incrementally parse objects from a `Read` implementation.
+pub fn parse_objects_read_iter<R: Read>(reader: R) -> ObjectsReadIter<R> {
+    ObjectsReadIter {
+        reader,
+        buf: String::new(),
+        done: false,
+    }
+}
+
+pub struct ObjectsReadIter<R: Read> {
+    reader: R,
+    buf: String,
+    done: bool,
+}
+
+impl<R: Read> ObjectsReadIter<R> {
+    fn read_more(&mut self) -> Result<(), std::io::Error> {
+        let mut tmp = [0u8; 8192];
+        match self.reader.read(&mut tmp) {
+            Ok(0) => {
+                self.done = true;
+                Ok(())
+            }
+            Ok(n) => {
+                self.buf.push_str(&String::from_utf8_lossy(&tmp[..n]));
+                Ok(())
+            }
+            Err(e) => {
+                self.done = true;
+                Err(e)
+            }
+        }
+    }
+}
+
+impl<R: Read> Iterator for ObjectsReadIter<R> {
+    type Item = Result<Object, ParseError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.done && self.buf.is_empty() {
+                return None;
+            }
+
+            match parse_object(&self.buf, self.done) {
+                Ok((None, rest)) => {
+                    self.buf = rest.to_string();
+                    if self.buf.is_empty() {
+                        if self.done {
+                            return None;
+                        }
+                        if let Err(e) = self.read_more() {
+                            return Some(Err(ParseError::Io(e)));
+                        }
+                        continue;
+                    }
+                    continue;
+                }
+                Ok((Some(obj), rest)) => {
+                    self.buf = rest.to_string();
+                    return Some(Ok(obj));
+                }
+                Err(ParseError::Incomplete) => {
+                    if self.done {
+                        return Some(Err(ParseError::Incomplete));
+                    }
+                    if let Err(e) = self.read_more() {
+                        return Some(Err(ParseError::Io(e)));
+                    }
+                    continue;
+                }
+                Err(e) => {
+                    self.done = true;
+                    self.buf.clear();
+                    return Some(Err(e));
+                }
+            }
+        }
+    }
+}
+
 pub struct ObjectsIter<'a> {
     input: &'a str,
 }
@@ -26,7 +108,7 @@ impl Iterator for ObjectsIter<'_> {
             if self.input.is_empty() {
                 return None;
             }
-            match parse_object(self.input) {
+            match parse_object(self.input, true) {
                 Ok((None, rest)) => {
                     self.input = rest;
                     if rest.is_empty() {
@@ -48,11 +130,13 @@ impl Iterator for ObjectsIter<'_> {
 }
 
 /// Parse a single object from the input string.
-fn parse_object(input: &str) -> ParseResult<Object> {
+/// The `eof` flag indicates whether no more data will follow the input.
+fn parse_object(input: &str, eof: bool) -> ParseResult<Object> {
     let mut rest = input;
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
     let mut current_key: Option<String> = None;
     let mut started = false;
+    let mut terminated = false;
 
     while !rest.is_empty() {
         let (line, next) = split_first_line(rest);
@@ -68,8 +152,12 @@ fn parse_object(input: &str) -> ParseResult<Object> {
 
         if trimmed.is_empty() {
             if started {
+                terminated = true;
                 break;
             } else {
+                if next.is_empty() && !eof {
+                    return Err(ParseError::Incomplete);
+                }
                 continue;
             }
         }
@@ -114,11 +202,21 @@ fn parse_object(input: &str) -> ParseResult<Object> {
                 }
             }
         } else {
+            if rest.is_empty() && !eof {
+                return Err(ParseError::Incomplete);
+            }
             return Err(ParseError::MalformedLine(trimmed.to_string()));
+        }
+
+        if rest.is_empty() && !terminated && !eof {
+            return Err(ParseError::Incomplete);
         }
     }
 
     if started {
+        if !terminated && !eof && rest.is_empty() {
+            return Err(ParseError::Incomplete);
+        }
         let mut obj = Object::new();
         for (k, vals) in map {
             for v in vals {
@@ -127,6 +225,9 @@ fn parse_object(input: &str) -> ParseResult<Object> {
         }
         Ok((Some(obj), rest))
     } else {
+        if !eof && !rest.is_empty() {
+            return Err(ParseError::Incomplete);
+        }
         Ok((None, rest))
     }
 }
@@ -140,9 +241,11 @@ fn split_first_line(input: &str) -> (&str, &str) {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum ParseError {
     MalformedLine(String),
+    Io(std::io::Error),
+    Incomplete,
 }
 
 #[cfg(test)]
@@ -228,4 +331,54 @@ mod tests {
         let err = parse_objects(text).unwrap_err();
         assert!(matches!(err, ParseError::MalformedLine(_)));
     }
+
+    #[test]
+    fn read_iter_single_object() {
+        let text = "inetnum: 192.0.2.0 - 192.0.2.255\nnetname: TEST\n\n";
+        let reader = std::io::Cursor::new(text);
+        let objs: Vec<_> = parse_objects_read_iter(reader).map(Result::unwrap).collect();
+        assert_eq!(objs.len(), 1);
+        assert_eq!(objs[0].get("netname").unwrap(), ["TEST"]);
+    }
+
+    struct ChunkReader<R: std::io::Read> {
+        inner: R,
+        chunk: usize,
+    }
+
+    impl<R: std::io::Read> std::io::Read for ChunkReader<R> {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let max = std::cmp::min(self.chunk, buf.len());
+            self.inner.read(&mut buf[..max])
+        }
+    }
+
+    #[test]
+    fn read_iter_multiple_objects_small_chunks() {
+        let text = "person: John\nsource: T\n\naut-num: AS1\nsource: T\n\n";
+        let cur = std::io::Cursor::new(text);
+        let reader = ChunkReader { inner: cur, chunk: 4 };
+        let objs: Vec<_> = parse_objects_read_iter(reader).map(Result::unwrap).collect();
+        assert_eq!(objs.len(), 2);
+    }
+
+    struct FailReader;
+
+    impl std::io::Read for FailReader {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "fail"))
+        }
+    }
+
+    #[test]
+    fn read_iter_propagates_read_error() {
+        let mut iter = parse_objects_read_iter(FailReader);
+        match iter.next() {
+            Some(Err(ParseError::Io(e))) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::Other);
+            }
+            other => panic!("unexpected: {:?}", other),
+        }
+    }
+
 }
