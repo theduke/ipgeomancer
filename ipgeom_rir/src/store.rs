@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use flate2::read::GzDecoder;
 use ipgeom_rpsl::{RpslObject, parse_objects_read_iter};
 
+use crate::db::Database;
+
 use crate::{Client, DbData, RirProvider, registry, types};
 
 /// Persistent store for RIR database dumps.
@@ -14,6 +16,24 @@ pub struct Store {
     data_dir: PathBuf,
     client: Client,
     rirs: HashMap<types::Rir, Box<dyn RirProvider>>,
+}
+
+/// Options controlling what data is persisted into a database.
+#[derive(Debug, Clone, Copy)]
+pub struct PersistFilter {
+    /// Persist all RPSL objects into dedicated tables.
+    pub rpsl_objects: bool,
+    /// Populate the fast IP geolocation tables.
+    pub geo_tables: bool,
+}
+
+impl Default for PersistFilter {
+    fn default() -> Self {
+        Self {
+            rpsl_objects: true,
+            geo_tables: true,
+        }
+    }
 }
 
 impl Store {
@@ -130,6 +150,45 @@ impl Store {
         Ok(iters.into_iter().flatten())
     }
 
+    /// Persist stored objects into a database using the provided filter.
+    pub fn persist_to_db<D: Database>(
+        &self,
+        db: &D,
+        filter: PersistFilter,
+    ) -> Result<(), anyhow::Error> {
+        db.migrate()?;
+        for obj_res in self.all_objects_iter()? {
+            let obj = obj_res?;
+            if filter.rpsl_objects {
+                db.insert_rpsl_object(&obj)?;
+            }
+            if filter.geo_tables {
+                match &obj {
+                    RpslObject::Inetnum(inet) => {
+                        if let Some(country) = &inet.country {
+                            for net in &inet.inetnum {
+                                let start = u32::from(net.network());
+                                let end = u32::from(net.broadcast());
+                                db.insert_ipv4_geo(start, end, country)?;
+                            }
+                        }
+                    }
+                    RpslObject::Inet6num(inet) => {
+                        if let Some(country) = &inet.country {
+                            for net in &inet.inet6num {
+                                let start = u128::from(net.network());
+                                let end = u128::from(net.broadcast());
+                                db.insert_ipv6_geo(start, end, country)?;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Build a GeoIP2 database from all stored objects.
     pub fn write_geoip_db<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), anyhow::Error> {
         use maxminddb_writer::{
@@ -230,6 +289,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use crate::RirKind;
+    use crate::SqliteDb;
 
     use super::*;
 
@@ -344,5 +404,38 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
 
         let meta = fs::metadata(&db_path).unwrap();
         assert!(meta.len() > 0);
+    }
+
+    #[test]
+    fn persist_to_sqlite_db() {
+        let mut base = std::env::temp_dir();
+        let t = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        base.push(format!("ipgeomancer_test_persist_{}", t));
+        fs::create_dir_all(&base).unwrap();
+        let mut rirs: HashMap<RirKind, Box<dyn crate::RirProvider>> = HashMap::new();
+        for rir in RirKind::ALL.iter() {
+            rirs.insert(*rir, Box::new(MockRir::new(&mock_rir_data())));
+        }
+
+        let store = Store::with_rirs(&base, rirs);
+        store.update().unwrap();
+
+        let db = SqliteDb::memory().unwrap();
+        store.persist_to_db(&db, PersistFilter::default()).unwrap();
+
+        let c = db
+            .lookup_ipv4("192.0.2.1".parse().unwrap())
+            .unwrap()
+            .unwrap();
+        assert_eq!(c, "ZZ");
+
+        let c = db
+            .lookup_ipv6("2001:db8::1".parse().unwrap())
+            .unwrap()
+            .unwrap();
+        assert_eq!(c, "ZZ");
     }
 }

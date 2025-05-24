@@ -1,9 +1,14 @@
+mod db;
 mod store;
 mod types;
 
 use std::io::Read;
 
-pub use {self::store::Store, self::types::Rir as RirKind};
+pub use {
+    self::db::{Database, SqliteDb},
+    self::store::Store,
+    self::types::Rir as RirKind,
+};
 
 mod registry;
 
