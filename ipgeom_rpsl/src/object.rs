@@ -6,6 +6,12 @@ pub struct Object {
     attributes: HashMap<String, Vec<String>>,
 }
 
+impl Default for Object {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Object {
     /// Create a new RPSL object
     pub fn new() -> Self {
@@ -18,7 +24,7 @@ impl Object {
     pub fn add(&mut self, key: String, value: String) {
         self.attributes
             .entry(key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(value);
     }
 

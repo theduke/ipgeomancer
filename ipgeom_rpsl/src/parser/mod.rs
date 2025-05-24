@@ -10,7 +10,7 @@ pub fn parse_objects(input: &str) -> Result<Vec<Object>, ParseError> {
 }
 
 /// Incrementally parse objects from the input and return an iterator of results.
-pub fn parse_objects_iter<'a>(input: &'a str) -> ObjectsIter<'a> {
+pub fn parse_objects_iter(input: &str) -> ObjectsIter<'_> {
     ObjectsIter { input }
 }
 
@@ -18,7 +18,7 @@ pub struct ObjectsIter<'a> {
     input: &'a str,
 }
 
-impl<'a> Iterator for ObjectsIter<'a> {
+impl Iterator for ObjectsIter<'_> {
     type Item = Result<Object, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -100,7 +100,7 @@ fn parse_object(input: &str) -> ParseResult<Object> {
         if let Some(pos) = trimmed.find(':') {
             let key = trimmed[..pos].trim().to_lowercase();
             let value = trimmed[pos + 1..].trim().to_string();
-            map.entry(key.clone()).or_insert_with(Vec::new).push(value);
+            map.entry(key.clone()).or_default().push(value);
             current_key = Some(key);
         } else if let Some(key) = &current_key {
             if let Some(values) = map.get_mut(key) {
