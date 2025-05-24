@@ -723,4 +723,32 @@ mod tests {
             panic!();
         }
     }
+
+    #[test]
+    fn parse_datetime_formats() {
+        let dt = parse_datetime_flexible("2020-01-02T03:04:05Z").unwrap();
+        assert_eq!(dt, datetime!(2020-01-02 03:04:05 UTC));
+
+        let dt = parse_datetime_flexible("20200102 030405").unwrap();
+        assert_eq!(dt, datetime!(2020-01-02 03:04:05 UTC));
+
+        let dt = parse_datetime_flexible("20200102").unwrap();
+        assert_eq!(dt, datetime!(2020-01-02 00:00:00 UTC));
+
+        let dt = parse_datetime_flexible("2020-01-02").unwrap();
+        assert_eq!(dt, datetime!(2020-01-02 00:00:00 UTC));
+
+        assert!(parse_datetime_flexible("not a date").is_err());
+    }
+
+    #[test]
+    fn invalid_ip_ranges() {
+        let r = parse_ipv4_range("10.0.0.1 - 10.0.0.0").unwrap();
+        assert!(r.iter().next().is_none());
+        assert!(parse_ipv4_range("bogus").is_err());
+
+        let r = parse_ipv6_range("ffff:: - ::").unwrap();
+        assert!(r.iter().next().is_none());
+        assert!(parse_ipv6_range("invalid").is_err());
+    }
 }

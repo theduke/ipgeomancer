@@ -50,3 +50,19 @@ impl std::str::FromStr for Rir {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_and_name() {
+        for rir in Rir::ALL.iter() {
+            let upper = rir.to_string();
+            let lower = rir.name();
+            assert_eq!(upper.to_lowercase(), lower);
+            assert_eq!(upper.parse::<Rir>().unwrap(), *rir);
+        }
+        assert!("unknown".parse::<Rir>().is_err());
+    }
+}
