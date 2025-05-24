@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::Serialize;
+use std::collections::HashMap;
 
 /// RPSL object
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -23,10 +23,7 @@ impl Object {
 
     /// Add an attribute to the object
     pub fn add(&mut self, key: String, value: String) {
-        self.attributes
-            .entry(key)
-            .or_default()
-            .push(value);
+        self.attributes.entry(key).or_default().push(value);
     }
 
     pub fn get(&self, key: &str) -> Option<&[String]> {
