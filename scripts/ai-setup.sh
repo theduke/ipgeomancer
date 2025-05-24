@@ -13,6 +13,7 @@ fi
 
 # Ensure latest stable Rust toolchain is installed
 rustup install stable
+rustup component add rustfmt clippy
 
 # Fetch Rust dependencies
 
