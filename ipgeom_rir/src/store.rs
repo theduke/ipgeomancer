@@ -19,7 +19,7 @@ pub struct Store {
 impl Store {
     /// Create a new store using default RIR implementations.
     pub fn new<P: Into<PathBuf>>(data_dir: P) -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::blocking::Client::builder()
             .user_agent("ipgeomancer")
             .build()
             .expect("failed to build client");
@@ -55,7 +55,7 @@ impl Store {
         data_dir: P,
         rirs: HashMap<types::Rir, Box<dyn RirProvider>>,
     ) -> Self {
-        let client = reqwest::Client::builder()
+        let client = reqwest::blocking::Client::builder()
             .user_agent("ipgeomancer")
             .build()
             .expect("failed to build client");
@@ -67,12 +67,12 @@ impl Store {
     }
 
     /// Download the databases from all configured RIRs.
-    pub async fn update(&self) -> Result<(), anyhow::Error> {
+    pub fn update(&self) -> Result<(), anyhow::Error> {
         tracing::info!("Updating RIR databases in {}", self.data_dir.display());
 
         for (rir, handler) in &self.rirs {
             tracing::debug!("Downloading RPSL data for {}", rir.name());
-            let data = handler.download_rpsl_db(&self.client).await?;
+            let data = handler.download_rpsl_db(&self.client)?;
             self.store_data(*rir, data)?;
             tracing::info!("Updated RPSL db for {}", rir.name());
         }
@@ -232,7 +232,6 @@ mod tests {
     use std::collections::HashMap;
 
     use std::fs;
-    use std::pin::Pin;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     /// Simple mock RIR used for tests.
@@ -250,16 +249,14 @@ mod tests {
     }
 
     impl RirProvider for MockRir {
-        fn download_rpsl_db<'a>(
-            &'a self,
-            _client: &'a Client,
-        ) -> Pin<Box<dyn Future<Output = Result<DbData, anyhow::Error>> + Send + 'a>> {
-            let data = self.data.clone();
-            Box::pin(async move {
-                Ok(DbData {
-                    gzip: false,
-                    reader: Box::new(std::io::Cursor::new(data)),
-                })
+        fn build_rpsl_db_request(&self, _client: &Client) -> reqwest::blocking::RequestBuilder {
+            unimplemented!("mock")
+        }
+
+        fn download_rpsl_db(&self, _client: &Client) -> Result<DbData, anyhow::Error> {
+            Ok(DbData {
+                gzip: false,
+                reader: Box::new(std::io::Cursor::new(self.data.clone())),
             })
         }
     }
@@ -270,8 +267,8 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
             .to_string()
     }
 
-    #[tokio::test]
-    async fn store_download_and_iter() {
+    #[test]
+    fn store_download_and_iter() {
         let mut base = std::env::temp_dir();
         let t = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -285,7 +282,7 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
         }
 
         let store = Store::with_rirs(&base, rirs);
-        store.update().await.unwrap();
+        store.update().unwrap();
 
         for rir in RirKind::ALL.iter() {
             let mut iter = store.objects_iter(*rir).unwrap();
@@ -321,8 +318,8 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
         assert_eq!(count, RirKind::ALL.len() * 2 - 2);
     }
 
-    #[tokio::test]
-    async fn generate_geoip_db_file() {
+    #[test]
+    fn generate_geoip_db_file() {
         let mut base = std::env::temp_dir();
         let t = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -336,7 +333,7 @@ inet6num: 2001:db8::/32\nnetname: V6-NET\ncountry: ZZ\nsource: TST\n\n"
         }
 
         let store = Store::with_rirs(&base, rirs);
-        store.update().await.unwrap();
+        store.update().unwrap();
 
         let db_path = base.join("geoip.mmdb");
         store.write_geoip_db(&db_path).unwrap();

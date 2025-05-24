@@ -17,10 +17,10 @@ pub enum StoreCmd {
     },
 }
 
-pub async fn handle(data_dir: PathBuf, cmd: StoreCmd) -> Result<()> {
+pub fn handle(data_dir: PathBuf, cmd: StoreCmd) -> Result<()> {
     let store = Store::new(data_dir);
     match cmd {
-        StoreCmd::Update(args) => update::handle(&store, args).await?,
+        StoreCmd::Update(args) => update::handle(&store, args)?,
         StoreCmd::BuildGeoipdb { path } => store.write_geoip_db(path)?,
     }
     Ok(())

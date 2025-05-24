@@ -26,8 +26,7 @@ enum Commands {
     Ipdb(cmd::ipdb::IpdbCmd),
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("ipgeom=debug,info"));
     tracing_subscriber::fmt()
@@ -38,7 +37,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Store(cmd) => cmd::store::handle(cli.data_dir, cmd).await?,
+        Commands::Store(cmd) => cmd::store::handle(cli.data_dir, cmd)?,
         Commands::Ipdb(cmd) => cmd::ipdb::handle(cmd)?,
     }
 

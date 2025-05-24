@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.38", features = ["derive", "help", "env"] }
-tokio = { version = "1.45.0", features = ["full"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 maxminddb = "0.26.0"
