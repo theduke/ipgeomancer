@@ -22,9 +22,9 @@ cargo fetch --locked
 
 mkdir -p data/test/db
 
-echo "Downloading test data..."
+# echo "Downloading test data..."
 
-echo "Downloading RIPE database dump..."
-curl -L https://ftp.ripe.net/ripe/dbase/ripe.db.gz | gunzip -c > data/test/db/ripe.db
+# echo "Downloading RIPE database dump..."
+# curl -L https://ftp.ripe.net/ripe/dbase/ripe.db.gz | gunzip -c > data/test/db/ripe.db
 
-echo "Done!"
+# echo "Done!"

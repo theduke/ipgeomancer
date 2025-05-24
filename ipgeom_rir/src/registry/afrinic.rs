@@ -1,7 +1,5 @@
 use std::io::Read as _;
 
-use anyhow::Context as _;
-
 use crate::{Client, Rir};
 
 #[derive(Debug, Clone, Copy)]
