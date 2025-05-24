@@ -1,11 +1,12 @@
 use crate::Object;
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
+use serde::Serialize;
 use std::collections::HashMap;
 use time::{Date, OffsetDateTime, PrimitiveDateTime, macros::format_description};
 
 /// Data for an `inetnum` object
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Inetnum {
     pub inetnum: Option<IpRange<Ipv4Net>>,
     pub netname: Option<String>,
@@ -21,7 +22,7 @@ pub struct Inetnum {
     pub org: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Inet6num {
     pub inet6num: Option<IpRange<Ipv6Net>>,
     pub netname: Option<String>,
@@ -37,7 +38,7 @@ pub struct Inet6num {
     pub org: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AutNum {
     pub aut_num: Option<String>,
     pub as_name: Option<String>,
@@ -54,7 +55,7 @@ pub struct AutNum {
     pub org: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Person {
     pub person: Option<String>,
     pub address: Option<String>,
@@ -68,7 +69,7 @@ pub struct Person {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Role {
     pub role: Option<String>,
     pub address: Option<String>,
@@ -85,7 +86,7 @@ pub struct Role {
     pub abuse_mailbox: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Organisation {
     pub organisation: Option<String>,
     pub org_name: Option<String>,
@@ -100,7 +101,7 @@ pub struct Organisation {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Mntner {
     pub mntner: Option<String>,
     pub descr: Option<String>,
@@ -115,7 +116,7 @@ pub struct Mntner {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Route {
     pub route: Option<IpRange<Ipv4Net>>,
     pub descr: Option<String>,
@@ -133,7 +134,7 @@ pub struct Route {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Route6 {
     pub route6: Option<IpRange<Ipv6Net>>,
     pub descr: Option<String>,
@@ -145,7 +146,7 @@ pub struct Route6 {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum RpslObject {
     Inetnum(Inetnum),
     Inet6num(Inet6num),

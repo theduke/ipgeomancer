@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use serde::Serialize;
 
 /// RPSL object
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Object {
     attributes: HashMap<String, Vec<String>>,
 }
@@ -45,5 +46,28 @@ impl Object {
     /// Create an object from an attribute map
     pub fn from_attributes(map: HashMap<String, Vec<String>>) -> Self {
         Object { attributes: map }
+    }
+
+    /// Convert the object back into an RPSL formatted string
+    pub fn to_rpsl(&self) -> String {
+        let mut out = String::new();
+        for (key, vals) in &self.attributes {
+            for val in vals {
+                if val.contains('\n') {
+                    for line in val.lines() {
+                        out.push_str(key);
+                        out.push_str(": ");
+                        out.push_str(line);
+                        out.push('\n');
+                    }
+                } else {
+                    out.push_str(key);
+                    out.push_str(": ");
+                    out.push_str(val);
+                    out.push('\n');
+                }
+            }
+        }
+        out
     }
 }
