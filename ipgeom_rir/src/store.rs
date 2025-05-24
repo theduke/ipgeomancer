@@ -107,23 +107,20 @@ impl Store {
     pub fn objects_iter(
         &self,
         rir: types::Rir,
-    ) -> Result<impl Iterator<Item = Result<RpslObject, ipgeom_rpsl::ParseError>>, anyhow::Error>
-    {
+    ) -> Result<impl Iterator<Item = Result<RpslObject, anyhow::Error>>, anyhow::Error> {
         let file = File::open(self.db_path(rir))?;
         let reader = BufReader::new(file);
-        Ok(parse_objects_read_iter(reader).map(|res| {
-            res.map(|obj| match RpslObject::try_from(obj.clone()) {
-                Ok(t) => t,
-                Err(_) => ipgeom_rpsl::RpslObject::Other(obj),
-            })
-        }))
+        let iter = parse_objects_read_iter(reader).map(|res| {
+            let obj = res?;
+            RpslObject::try_from(obj)
+        });
+        Ok(iter)
     }
 
     /// Iterate over typed RPSL objects from all stored registries.
     pub fn all_objects_iter(
         &self,
-    ) -> Result<impl Iterator<Item = Result<RpslObject, ipgeom_rpsl::ParseError>>, anyhow::Error>
-    {
+    ) -> Result<impl Iterator<Item = Result<RpslObject, anyhow::Error>>, anyhow::Error> {
         let mut iters = Vec::new();
         for rir in types::Rir::ALL.iter() {
             if self.rirs.contains_key(rir) {
@@ -170,10 +167,11 @@ impl Store {
 
         tracing::info!("Building GeoIP database to {}", path.as_ref().display());
 
-        for (index, obj_res) in self.all_objects_iter()?.enumerate() {
+        for (_index, obj_res) in self.all_objects_iter()?.enumerate() {
             let obj = obj_res.map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?;
             match obj {
                 RpslObject::Inetnum(inet) => {
+                    dbg!(&inet);
                     if let Some(country) = &inet.country {
                         let mut nets = 0;
                         for net in &inet.inetnum {
@@ -184,6 +182,7 @@ impl Store {
                             let data = db.insert_value(Record {
                                 country: country.clone(),
                             })?;
+                            tracing::debug!(?path, ?country, "adding inetnum object");
                             db.insert_node(path, data);
                             nets += 1;
                         }
@@ -206,8 +205,11 @@ impl Store {
                             let data = db.insert_value(Record {
                                 country: country.clone(),
                             })?;
+                            tracing::debug!(?path, ?country, "adding inet6num object");
                             db.insert_node(path, data);
                         }
+                    } else {
+                        tracing::warn!(?inet, "inet6num object without country");
                     }
                 }
                 _ => {}

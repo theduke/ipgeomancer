@@ -298,6 +298,31 @@ pub enum ParseError {
     },
 }
 
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::MalformedLine {
+                line,
+                content,
+                kind,
+            } => {
+                write!(f, "Malformed line {}: '{}': {:?}", line, content, kind)
+            }
+            ParseError::Io(e) => write!(f, "I/O error: {}", e),
+            ParseError::Incomplete { line } => write!(f, "Incomplete object at line {}", line),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ParseError::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

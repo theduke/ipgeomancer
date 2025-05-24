@@ -1,4 +1,5 @@
 use crate::Object;
+use anyhow::{Error, anyhow};
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
 use serde::Serialize;
@@ -161,23 +162,23 @@ pub enum RpslObject {
 }
 
 /// Parse various datetime formats used in RPSL
-fn parse_datetime_flexible(s: &str) -> Option<OffsetDateTime> {
+fn parse_datetime_flexible(s: &str) -> Result<OffsetDateTime, Error> {
     if let Ok(dt) = OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339) {
-        return Some(dt);
+        return Ok(dt);
     }
     let yyyymmdd_hhmmss = format_description!("[year][month][day] [hour repr:24][minute][second]");
     if let Ok(pdt) = PrimitiveDateTime::parse(s, &yyyymmdd_hhmmss) {
-        return Some(pdt.assume_utc());
+        return Ok(pdt.assume_utc());
     }
     let yyyymmdd = format_description!("[year][month][day]");
     if let Ok(date) = Date::parse(s, yyyymmdd) {
-        return Some(date.midnight().assume_utc());
+        return Ok(date.midnight().assume_utc());
     }
     let yyyy_mm_dd = format_description!("[year]-[month]-[day]");
     if let Ok(date) = Date::parse(s, &yyyy_mm_dd) {
-        return Some(date.midnight().assume_utc());
+        return Ok(date.midnight().assume_utc());
     }
-    None
+    Err(anyhow!("invalid datetime: {s}"))
 }
 
 fn pop_single(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<String> {
@@ -198,20 +199,26 @@ fn pop_text(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<String>
     map.remove(key).map(|v| v.join("\n"))
 }
 
-fn pop_datetime(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<OffsetDateTime> {
-    pop_single(map, key).and_then(|s| parse_datetime_flexible(&s))
+fn pop_datetime(
+    map: &mut HashMap<String, Vec<String>>,
+    key: &str,
+) -> Result<Option<OffsetDateTime>, Error> {
+    match pop_single(map, key) {
+        Some(s) => Ok(Some(parse_datetime_flexible(&s)?)),
+        None => Ok(None),
+    }
 }
 
-fn parse_ipv4_range(s: &str) -> Option<IpRange<Ipv4Net>> {
+fn parse_ipv4_range(s: &str) -> Result<IpRange<Ipv4Net>, Error> {
     let trimmed = s.trim();
     if let Ok(net) = trimmed.parse::<Ipv4Net>() {
         let mut r = IpRange::new();
         r.add(net);
-        return Some(r);
+        return Ok(r);
     }
     if let Some((start, end)) = trimmed.split_once('-') {
-        let start = start.trim().parse::<std::net::Ipv4Addr>().ok()?;
-        let end = end.trim().parse::<std::net::Ipv4Addr>().ok()?;
+        let start = start.trim().parse::<std::net::Ipv4Addr>()?;
+        let end = end.trim().parse::<std::net::Ipv4Addr>()?;
         let mut r = IpRange::new();
         let mut cur = u32::from(start) as u64;
         let end = u32::from(end) as u64;
@@ -235,28 +242,28 @@ fn parse_ipv4_range(s: &str) -> Option<IpRange<Ipv4Net>> {
                     break;
                 }
             }
-            let net = Ipv4Net::new(std::net::Ipv4Addr::from(cur as u32), prefix as u8).ok()?;
+            let net = Ipv4Net::new(std::net::Ipv4Addr::from(cur as u32), prefix as u8)?;
             r.add(net);
             if prefix == 0 {
                 break;
             }
             cur += 1u64 << (32 - prefix);
         }
-        return Some(r);
+        return Ok(r);
     }
-    None
+    Err(anyhow!("invalid IPv4 range: {s}"))
 }
 
-fn parse_ipv6_range(s: &str) -> Option<IpRange<Ipv6Net>> {
+fn parse_ipv6_range(s: &str) -> Result<IpRange<Ipv6Net>, Error> {
     let trimmed = s.trim();
     if let Ok(net) = trimmed.parse::<Ipv6Net>() {
         let mut r = IpRange::new();
         r.add(net);
-        return Some(r);
+        return Ok(r);
     }
     if let Some((start, end)) = trimmed.split_once('-') {
-        let start = start.trim().parse::<std::net::Ipv6Addr>().ok()?;
-        let end = end.trim().parse::<std::net::Ipv6Addr>().ok()?;
+        let start = start.trim().parse::<std::net::Ipv6Addr>()?;
+        let end = end.trim().parse::<std::net::Ipv6Addr>()?;
         let mut r = IpRange::new();
         let mut cur = u128::from(start);
         let end = u128::from(end);
@@ -278,41 +285,71 @@ fn parse_ipv6_range(s: &str) -> Option<IpRange<Ipv6Net>> {
                     break;
                 }
             }
-            let net = Ipv6Net::new(std::net::Ipv6Addr::from(cur), prefix as u8).ok()?;
+            let net = Ipv6Net::new(std::net::Ipv6Addr::from(cur), prefix as u8)?;
             r.add(net);
             if prefix == 0 {
                 break;
             }
             cur += 1u128 << (128 - prefix);
         }
-        return Some(r);
+        return Ok(r);
     }
-    None
+    Err(anyhow!("invalid IPv6 range: {s}"))
 }
 
-fn pop_range4(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<IpRange<Ipv4Net>> {
-    pop_single(map, key).and_then(|s| parse_ipv4_range(&s))
+fn pop_range4(
+    map: &mut HashMap<String, Vec<String>>,
+    key: &str,
+) -> Result<Option<IpRange<Ipv4Net>>, Error> {
+    match pop_single(map, key) {
+        Some(s) => Ok(Some(parse_ipv4_range(&s)?)),
+        None => Ok(None),
+    }
 }
 
-fn pop_range6(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<IpRange<Ipv6Net>> {
-    pop_single(map, key).and_then(|s| parse_ipv6_range(&s))
+fn pop_range6(
+    map: &mut HashMap<String, Vec<String>>,
+    key: &str,
+) -> Result<Option<IpRange<Ipv6Net>>, Error> {
+    match pop_single(map, key) {
+        Some(s) => Ok(Some(parse_ipv6_range(&s)?)),
+        None => Ok(None),
+    }
 }
 
-fn pop_net4(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<IpRange<Ipv4Net>> {
-    pop_single(map, key).and_then(|s| parse_ipv4_range(&s))
+fn pop_net4(
+    map: &mut HashMap<String, Vec<String>>,
+    key: &str,
+) -> Result<Option<IpRange<Ipv4Net>>, Error> {
+    match pop_single(map, key) {
+        Some(s) => Ok(Some(parse_ipv4_range(&s)?)),
+        None => Ok(None),
+    }
 }
 
-fn pop_net6(map: &mut HashMap<String, Vec<String>>, key: &str) -> Option<IpRange<Ipv6Net>> {
-    pop_single(map, key).and_then(|s| parse_ipv6_range(&s))
+fn pop_net6(
+    map: &mut HashMap<String, Vec<String>>,
+    key: &str,
+) -> Result<Option<IpRange<Ipv6Net>>, Error> {
+    match pop_single(map, key) {
+        Some(s) => Ok(Some(parse_ipv6_range(&s)?)),
+        None => Ok(None),
+    }
 }
 
 impl TryFrom<Object> for RpslObject {
-    type Error = ();
+    type Error = anyhow::Error;
 
     fn try_from(obj: Object) -> Result<Self, Self::Error> {
         let mut map = obj.into_attributes();
         if map.contains_key("inetnum") {
-            let inetnum = pop_range4(&mut map, "inetnum").ok_or(())?;
+            let inetnum =
+                pop_range4(&mut map, "inetnum")?.ok_or_else(|| anyhow!("missing inetnum"))?;
+            let created = pop_datetime(&mut map, "created")?;
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Inetnum(Inetnum {
                 inetnum,
                 netname: pop_single(&mut map, "netname"),
@@ -322,16 +359,21 @@ impl TryFrom<Object> for RpslObject {
                 tech_c: pop_multi(&mut map, "tech-c"),
                 status: pop_single(&mut map, "status"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created"),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
                 org: pop_single(&mut map, "org"),
             });
             return Ok(res);
         }
         if map.contains_key("inet6num") {
-            let inet6num = pop_range6(&mut map, "inet6num").ok_or(())?;
+            let inet6num =
+                pop_range6(&mut map, "inet6num")?.ok_or_else(|| anyhow!("missing inet6num"))?;
+            let created = pop_datetime(&mut map, "created")?;
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Inet6num(Inet6num {
                 inet6num,
                 netname: pop_single(&mut map, "netname"),
@@ -341,16 +383,21 @@ impl TryFrom<Object> for RpslObject {
                 tech_c: pop_multi(&mut map, "tech-c"),
                 status: pop_single(&mut map, "status"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created"),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
                 org: pop_single(&mut map, "org"),
             });
             return Ok(res);
         }
         if map.contains_key("aut-num") {
-            let aut_num = pop_single(&mut map, "aut-num").ok_or(())?;
+            let aut_num =
+                pop_single(&mut map, "aut-num").ok_or_else(|| anyhow!("missing aut-num"))?;
+            let created = pop_datetime(&mut map, "created")?;
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::AutNum(AutNum {
                 aut_num,
                 as_name: pop_single(&mut map, "as-name").or_else(|| pop_single(&mut map, "asname")),
@@ -361,16 +408,23 @@ impl TryFrom<Object> for RpslObject {
                 admin_c: pop_multi(&mut map, "admin-c"),
                 tech_c: pop_multi(&mut map, "tech-c"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created"),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
                 org: pop_single(&mut map, "org"),
             });
             return Ok(res);
         }
         if map.contains_key("person") {
-            let person = pop_single(&mut map, "person").ok_or(())?;
+            let person = pop_single(&mut map, "person").ok_or_else(|| anyhow!("missing person"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Person(Person {
                 person,
                 address: pop_text(&mut map, "address"),
@@ -379,16 +433,22 @@ impl TryFrom<Object> for RpslObject {
                 email: pop_single(&mut map, "email").or_else(|| pop_single(&mut map, "e-mail")),
                 nic_hdl: pop_single(&mut map, "nic-hdl"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
             });
             return Ok(res);
         }
         if map.contains_key("role") {
-            let role = pop_single(&mut map, "role").ok_or(())?;
+            let role = pop_single(&mut map, "role").ok_or_else(|| anyhow!("missing role"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Role(Role {
                 role,
                 address: pop_text(&mut map, "address"),
@@ -399,10 +459,8 @@ impl TryFrom<Object> for RpslObject {
                 tech_c: pop_multi(&mut map, "tech-c"),
                 nic_hdl: pop_single(&mut map, "nic-hdl"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
                 abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
             });
@@ -411,7 +469,15 @@ impl TryFrom<Object> for RpslObject {
         if map.contains_key("organisation") || map.contains_key("organization") {
             let organisation = pop_single(&mut map, "organisation")
                 .or_else(|| pop_single(&mut map, "organization"))
-                .ok_or(())?;
+                .ok_or_else(|| anyhow!("missing organisation"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Organisation(Organisation {
                 organisation,
                 org_name: pop_single(&mut map, "org-name")
@@ -422,16 +488,22 @@ impl TryFrom<Object> for RpslObject {
                 abuse_mailbox: pop_single(&mut map, "abuse-mailbox"),
                 mnt_ref: pop_multi(&mut map, "mnt-ref"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
             });
             return Ok(res);
         }
         if map.contains_key("mntner") {
-            let mntner = pop_single(&mut map, "mntner").ok_or(())?;
+            let mntner = pop_single(&mut map, "mntner").ok_or_else(|| anyhow!("missing mntner"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Mntner(Mntner {
                 mntner,
                 descr: pop_text(&mut map, "descr"),
@@ -441,16 +513,22 @@ impl TryFrom<Object> for RpslObject {
                 mnt_nfy: pop_multi(&mut map, "mnt-nfy"),
                 auth: pop_multi(&mut map, "auth"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
             });
             return Ok(res);
         }
         if map.contains_key("route") {
-            let route = pop_net4(&mut map, "route").ok_or(())?;
+            let route = pop_net4(&mut map, "route")?.ok_or_else(|| anyhow!("missing route"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Route(Route {
                 route,
                 descr: pop_text(&mut map, "descr"),
@@ -463,24 +541,30 @@ impl TryFrom<Object> for RpslObject {
                 components: pop_single(&mut map, "components"),
                 holes: pop_multi(&mut map, "holes"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created"),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
             });
             return Ok(res);
         }
         if map.contains_key("route6") {
-            let route6 = pop_net6(&mut map, "route6").ok_or(())?;
+            let route6 = pop_net6(&mut map, "route6")?.ok_or_else(|| anyhow!("missing route6"))?;
+            let created = match pop_datetime(&mut map, "created")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
+            let last_modified = match pop_datetime(&mut map, "last-modified")? {
+                Some(dt) => Some(dt),
+                None => pop_datetime(&mut map, "changed")?,
+            };
             let res = RpslObject::Route6(Route6 {
                 route6,
                 descr: pop_text(&mut map, "descr"),
                 origin: pop_single(&mut map, "origin"),
                 member_of: pop_multi(&mut map, "member-of"),
                 mnt_by: pop_multi(&mut map, "mnt-by"),
-                created: pop_datetime(&mut map, "created"),
-                last_modified: pop_datetime(&mut map, "last-modified")
-                    .or_else(|| pop_datetime(&mut map, "changed")),
+                created,
+                last_modified,
                 source: pop_single(&mut map, "source"),
             });
             return Ok(res);
