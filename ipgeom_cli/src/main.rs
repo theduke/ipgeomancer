@@ -1,10 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use ipgeom_rir::Store;
-use maxminddb::Reader;
-use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
 use std::path::PathBuf;
+
+mod cmd;
 
 /// Command line interface for ipgeomancer.
 #[derive(Parser)]
@@ -22,33 +20,10 @@ struct Cli {
 enum Commands {
     /// Manage the local RIR data store
     #[command(subcommand)]
-    Store(StoreCmd),
+    Store(cmd::store::StoreCmd),
     /// Query GeoIP database files
     #[command(subcommand)]
-    Ipdb(IpdbCmd),
-}
-
-#[derive(Subcommand)]
-enum StoreCmd {
-    /// Download database dumps from all RIRs
-    Update,
-    /// Build a MaxMind GeoIP database from stored RIR data
-    BuildGeoipdb {
-        /// Path of the GeoIP database file to create
-        path: PathBuf,
-    },
-}
-
-#[derive(Subcommand)]
-enum IpdbCmd {
-    /// Lookup an IP address in a GeoIP database
-    Lookup {
-        /// IP address to query
-        ip: IpAddr,
-        /// Path to the GeoIP database file
-        #[arg(short, long)]
-        db: PathBuf,
-    },
+    Ipdb(cmd::ipdb::IpdbCmd),
 }
 
 #[tokio::main]
@@ -63,37 +38,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Store(cmd) => handle_store(cli.data_dir, cmd).await?,
-        Commands::Ipdb(cmd) => handle_ipdb(cmd)?,
+        Commands::Store(cmd) => cmd::store::handle(cli.data_dir, cmd).await?,
+        Commands::Ipdb(cmd) => cmd::ipdb::handle(cmd)?,
     }
 
-    Ok(())
-}
-
-async fn handle_store(data_dir: PathBuf, cmd: StoreCmd) -> Result<()> {
-    let store = Store::new(data_dir);
-    match cmd {
-        StoreCmd::Update => store.update().await?,
-        StoreCmd::BuildGeoipdb { path } => store.write_geoip_db(path)?,
-    }
-    Ok(())
-}
-
-fn handle_ipdb(cmd: IpdbCmd) -> Result<()> {
-    match cmd {
-        IpdbCmd::Lookup { ip, db } => {
-            #[derive(Debug, Deserialize, Serialize)]
-            struct Record {
-                country: String,
-            }
-
-            let reader = Reader::open_readfile(db)?;
-            if let Some(record) = reader.lookup::<Record>(ip)? {
-                println!("{}", serde_json::to_string_pretty(&record)?);
-            } else {
-                eprintln!("address not found");
-            }
-        }
-    }
     Ok(())
 }
