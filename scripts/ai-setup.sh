@@ -15,6 +15,14 @@ fi
 rustup install stable
 rustup component add rustfmt clippy
 
+echo "Installing cargo helpers..."
+
+echo "Installing cargo-binstall..."
+curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+echo "Installing cargo-tarpaulin..."
+cargo binstall cargo-tarpaulin
+
 # Fetch Rust dependencies
 
 cargo fetch --locked
