@@ -1,0 +1,34 @@
+[package]
+name = "ipgeom_server"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "HTTP service for ipgeomancer"
+keywords = ["server", "http"]
+categories = ["network-programming", "web-programming::http-server"]
+
+[features]
+test-online = []
+
+[dependencies]
+ipgeom_rir = { workspace = true }
+ipgeom_query = { workspace = true }
+ipgeom_whois = { workspace = true }
+
+axum = "0.8.4"
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+anyhow = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+hickory-proto = { workspace = true }
+icann-rdap-client = "0.0.22"
+maud = "0.27.0"
+async-traceroute = "0.1.2"
+
+[dev-dependencies]
+reqwest = { workspace = true, default-features = false, features = ["rustls-tls", "json"] }
+libc = "0.2"

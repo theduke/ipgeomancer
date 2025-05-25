@@ -1,0 +1,34 @@
+[package]
+name = "ipgeom_rir"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fetch and store Regional Internet Registry data"
+keywords = ["rir", "registry", "database"]
+categories = ["network-programming", "database"]
+
+[dependencies]
+reqwest = { workspace = true, default-features = false, features = [
+    "rustls-tls",
+    "gzip",
+    "blocking",
+] }
+ipnetwork = "0.21"
+time = { workspace = true, features = ["formatting", "parsing", "macros"] }
+thiserror = "1.0"
+serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+anyhow = { workspace = true }
+flate2 = "1.1.1"
+rpsl-rs = "2.0.0"
+iprange = { workspace = true }
+ipnet = { workspace = true }
+ipgeom_rpsl = { workspace = true }
+maxminddb-writer = "0.1.0"
+maxminddb = { workspace = true }
+tracing = { workspace = true }
+rusqlite = { version = "0.35.0", features = ["bundled"] }
+
