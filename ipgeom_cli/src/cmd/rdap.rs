@@ -50,15 +50,14 @@ pub struct RdapCmd {
     pub query: String,
 }
 
-pub fn handle(args: RdapCmd) -> Result<()> {
+pub async fn handle(args: RdapCmd) -> Result<()> {
     let query_type = if let Some(qt) = args.query_type {
         qt.build(&args.query)?
     } else {
         icann_rdap_client::rdap::QueryType::from_str(&args.query)?
     };
 
-    let rt = tokio::runtime::Runtime::new()?;
-    let res = rt.block_on(ipgeom_query::rdap(query_type))?;
+    let res = ipgeom_query::rdap(query_type).await?;
     println!("{}", serde_json::to_string_pretty(&res)?);
     Ok(())
 }

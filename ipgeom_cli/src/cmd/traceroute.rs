@@ -41,9 +41,7 @@ pub struct TracerouteCmd {
     host: String,
 }
 
-pub fn handle(args: TracerouteCmd) -> Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-
+pub async fn handle(args: TracerouteCmd) -> Result<()> {
     let version = if args.ipv4 {
         Some(IpVersion::V4)
     } else if args.ipv6 {
@@ -52,13 +50,13 @@ pub fn handle(args: TracerouteCmd) -> Result<()> {
         None
     };
 
-    let ip = rt.block_on(ipgeom_query::resolve_host(&args.host, version))?;
+    let ip = ipgeom_query::resolve_host(&args.host, version).await?;
     println!(
         "traceroute to {} ({}) , {} hops max",
         args.host, ip, args.max_hops
     );
 
-    let res = rt.block_on(ipgeom_query::traceroute(
+    let res = ipgeom_query::traceroute(
         &args.host,
         args.probe_method,
         args.max_hops,
@@ -69,7 +67,8 @@ pub fn handle(args: TracerouteCmd) -> Result<()> {
         args.dns_lookup,
         args.interface.as_deref(),
         version,
-    ))?;
+    )
+    .await?;
 
     for hop in res.hops {
         print!("{:>2}  ", hop.ttl);

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use clap::Args;
 use std::str::FromStr;
 
@@ -16,16 +16,13 @@ pub struct QueryCmd {
     pub name: String,
 }
 
-pub fn handle(args: QueryCmd) -> Result<()> {
+pub async fn handle(args: QueryCmd) -> Result<()> {
     let record_type =
         RecordType::from_str(&args.record_type).map_err(|_| anyhow!("invalid record type"))?;
 
-    let rt = tokio::runtime::Runtime::new()?;
-    let res = rt.block_on(ipgeom_query::dns::authoritative_query(
-        &args.name,
-        record_type,
-        args.server.as_deref(),
-    ))?;
+    let res =
+        ipgeom_query::dns::authoritative_query(&args.name, record_type, args.server.as_deref())
+            .await?;
 
     println!("Authoritative server: {}", res.authoritative_server);
     if res.records.is_empty() {

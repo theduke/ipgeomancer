@@ -9,8 +9,8 @@ pub enum DomainCmd {
     CheckCertificate(check_certificate::CheckCertCmd),
 }
 
-pub fn handle(cmd: DomainCmd) -> Result<()> {
+pub async fn handle(cmd: DomainCmd) -> Result<()> {
     match cmd {
-        DomainCmd::CheckCertificate(c) => check_certificate::handle(c),
+        DomainCmd::CheckCertificate(c) => check_certificate::handle(c).await,
     }
 }

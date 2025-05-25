@@ -9,8 +9,8 @@ pub enum DnsCmd {
     Query(query::QueryCmd),
 }
 
-pub fn handle(cmd: DnsCmd) -> Result<()> {
+pub async fn handle(cmd: DnsCmd) -> Result<()> {
     match cmd {
-        DnsCmd::Query(q) => query::handle(q),
+        DnsCmd::Query(q) => query::handle(q).await,
     }
 }

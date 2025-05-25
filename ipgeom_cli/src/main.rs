@@ -45,7 +45,8 @@ enum Commands {
     Traceroute(cmd::traceroute::TracerouteCmd),
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("ipgeom=debug,info"));
     tracing_subscriber::fmt()
@@ -59,13 +60,13 @@ fn main() -> Result<()> {
         Commands::Store(cmd) => cmd::store::handle(cli.data_dir, cmd)?,
         Commands::Ipdb(cmd) => cmd::ipdb::handle(cmd)?,
         Commands::Rpsl(cmd) => cmd::rpsl::handle(cmd)?,
-        Commands::Domain(cmd) => cmd::domain::handle(cmd)?,
-        Commands::Server(cmd) => cmd::server::handle(cmd)?,
-        Commands::Dns(cmd) => cmd::dns::handle(cmd)?,
-        Commands::Whois(cmd) => cmd::whois::handle(cmd)?,
-        Commands::Rdap(cmd) => cmd::rdap::handle(cmd)?,
-        Commands::Ping(cmd) => cmd::ping::handle(cmd)?,
-        Commands::Traceroute(cmd) => cmd::traceroute::handle(cmd)?,
+        Commands::Domain(cmd) => cmd::domain::handle(cmd).await?,
+        Commands::Server(cmd) => cmd::server::handle(cmd).await?,
+        Commands::Dns(cmd) => cmd::dns::handle(cmd).await?,
+        Commands::Whois(cmd) => cmd::whois::handle(cmd).await?,
+        Commands::Rdap(cmd) => cmd::rdap::handle(cmd).await?,
+        Commands::Ping(cmd) => cmd::ping::handle(cmd).await?,
+        Commands::Traceroute(cmd) => cmd::traceroute::handle(cmd).await?,
     }
 
     Ok(())

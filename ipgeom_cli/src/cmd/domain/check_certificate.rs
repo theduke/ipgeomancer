@@ -7,9 +7,8 @@ pub struct CheckCertCmd {
     pub domain: String,
 }
 
-pub fn handle(args: CheckCertCmd) -> Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-    let info = rt.block_on(ipgeom_query::fetch_certificate(&args.domain))?;
+pub async fn handle(args: CheckCertCmd) -> Result<()> {
+    let info = ipgeom_query::fetch_certificate(&args.domain).await?;
     println!("Domain: {}", args.domain);
     println!("Subject: {}", info.subject);
     println!("Issuer: {}", info.issuer);

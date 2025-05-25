@@ -7,9 +7,8 @@ pub struct WhoisCmd {
     pub domain: String,
 }
 
-pub fn handle(args: WhoisCmd) -> Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-    let res = rt.block_on(ipgeom_query::domain_whois(&args.domain))?;
+pub async fn handle(args: WhoisCmd) -> Result<()> {
+    let res = ipgeom_query::domain_whois(&args.domain).await?;
     println!("Server: {}\n", res.server);
     println!("{}", res.data);
     Ok(())

@@ -26,9 +26,7 @@ pub struct ServerCmd {
     open: bool,
 }
 
-pub fn handle(args: ServerCmd) -> Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-
+pub async fn handle(args: ServerCmd) -> Result<()> {
     if args.open {
         let url = format!("http://{}", args.listen);
         if let Err(e) = open_in_browser(&url) {
@@ -36,7 +34,7 @@ pub fn handle(args: ServerCmd) -> Result<()> {
         }
     }
 
-    rt.block_on(ipgeom_server::run(args.listen, &args.db))
+    ipgeom_server::run(args.listen, &args.db).await
 }
 
 fn open_in_browser(url: &str) -> std::io::Result<()> {

@@ -28,9 +28,7 @@ pub struct PingCmd {
     host: String,
 }
 
-pub fn handle(args: PingCmd) -> Result<()> {
-    let rt = tokio::runtime::Runtime::new()?;
-
+pub async fn handle(args: PingCmd) -> Result<()> {
     let version = if args.ipv4 {
         Some(IpVersion::V4)
     } else if args.ipv6 {
@@ -39,10 +37,10 @@ pub fn handle(args: PingCmd) -> Result<()> {
         None
     };
 
-    let ip = rt.block_on(ipgeom_query::resolve_host(&args.host, version))?;
+    let ip = ipgeom_query::resolve_host(&args.host, version).await?;
     println!("PING {} ({}) 56(84) bytes of data.", args.host, ip);
 
-    let res = rt.block_on(ipgeom_query::ping_with_callback(
+    let res = ipgeom_query::ping_with_callback(
         &args.host,
         Duration::from_secs(args.timeout),
         args.probes,
@@ -72,7 +70,8 @@ pub fn handle(args: PingCmd) -> Result<()> {
                 println!("icmp_seq={} timed out", update.seq + 1);
             }
         },
-    ))?;
+    )
+    .await?;
 
     let loss = (res.transmitted - res.received) as f64 / res.transmitted as f64 * 100.0;
     println!("--- {} ping statistics ---", args.host);
