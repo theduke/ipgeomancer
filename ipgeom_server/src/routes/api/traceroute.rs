@@ -1,8 +1,8 @@
 use async_traceroute::ProbeMethod;
 use axum::{
-    Json,
     extract::{Query, State},
     response::IntoResponse,
+    Json,
 };
 use ipgeom_query::TracerouteHop;
 use serde::{Deserialize, Serialize};

@@ -84,7 +84,7 @@ pub async fn ping_with_callback<F>(
 where
     F: FnMut(PingUpdate),
 {
-    use surge_ping::{Client, Config, ICMP, IcmpPacket, PingIdentifier, PingSequence};
+    use surge_ping::{Client, Config, IcmpPacket, PingIdentifier, PingSequence, ICMP};
 
     let ip = resolve_host(host, version).await?;
 

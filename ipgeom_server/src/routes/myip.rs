@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::{AppState, ui, util};
+use crate::{ui, util, AppState};
 
 /// Display information about the client's IP address.
 pub async fn handler(

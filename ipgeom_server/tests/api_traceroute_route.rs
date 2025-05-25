@@ -1,8 +1,6 @@
 #[cfg(feature = "test-online")]
 use ipgeom_server::run;
 #[cfg(feature = "test-online")]
-use libc;
-#[cfg(feature = "test-online")]
 use reqwest::Client;
 #[cfg(feature = "test-online")]
 use std::{

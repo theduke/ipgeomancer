@@ -3,13 +3,13 @@ pub mod dns;
 pub mod ping;
 pub mod traceroute;
 
-pub use cert::{CertificateInfo, fetch_certificate};
-pub use ping::{IpVersion, PingResult, PingUpdate, ping, ping_with_callback, resolve_host};
+pub use cert::{fetch_certificate, CertificateInfo};
+pub use ping::{ping, ping_with_callback, resolve_host, IpVersion, PingResult, PingUpdate};
 pub use traceroute::{
-    TracerouteHop, TracerouteResult, TracerouteUpdate, traceroute, traceroute_with_callback,
+    traceroute, traceroute_with_callback, TracerouteHop, TracerouteResult, TracerouteUpdate,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 /// Perform a generic RDAP query using `icann_rdap_client`.
 pub async fn rdap(

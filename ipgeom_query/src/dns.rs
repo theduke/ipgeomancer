@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use futures_util::{future::BoxFuture, stream::StreamExt};
 use hickory_client::client::Client;
 use hickory_proto::op::Query;

@@ -4,7 +4,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::{AppState, ui};
+use crate::{ui, AppState};
 
 #[derive(Deserialize)]
 pub struct Params {

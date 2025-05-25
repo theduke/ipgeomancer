@@ -1,10 +1,10 @@
 use crate::Object;
-use anyhow::{Context, Error, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Error};
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
 use serde::Serialize;
 use std::collections::HashMap;
-use time::{Date, OffsetDateTime, PrimitiveDateTime, macros::format_description};
+use time::{macros::format_description, Date, OffsetDateTime, PrimitiveDateTime};
 
 /// Data for an `inetnum` object
 #[derive(Debug, Clone, PartialEq, Serialize)]

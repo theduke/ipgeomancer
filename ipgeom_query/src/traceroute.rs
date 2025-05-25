@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use async_traceroute::{ProbeMethod, TracerouteBuilder};
 use futures_util::StreamExt;
 use std::{collections::BTreeMap, net::IpAddr, time::Duration};

@@ -5,7 +5,7 @@ use axum::{
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::{AppState, ui};
+use crate::{ui, AppState};
 
 #[derive(Deserialize)]
 pub struct Params {

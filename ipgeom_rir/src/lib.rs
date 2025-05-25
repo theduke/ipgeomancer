@@ -5,7 +5,7 @@ mod types;
 use std::io::Read;
 
 pub use {
-    self::db::{Database, sqlite::SqliteDb},
+    self::db::{sqlite::SqliteDb, Database},
     self::store::Store,
     self::types::Rir as RirKind,
 };

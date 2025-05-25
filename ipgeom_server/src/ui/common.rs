@@ -1,5 +1,5 @@
 use axum::response::Html;
-use maud::{DOCTYPE, Markup, html};
+use maud::{html, Markup, DOCTYPE};
 use std::net::IpAddr;
 
 /// Wrap body HTML in a basic Bulma layout.

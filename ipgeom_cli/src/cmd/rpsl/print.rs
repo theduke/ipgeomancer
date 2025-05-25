@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Args;
-use ipgeom_rpsl::{RpslObject, parse_objects_read_iter};
+use ipgeom_rpsl::{parse_objects_read_iter, RpslObject};
 use std::fs::File;
 use std::io::BufReader;
 use std::net::IpAddr;

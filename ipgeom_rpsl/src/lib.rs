@@ -5,8 +5,8 @@ mod typed;
 pub use self::{
     object::{Object, ObjectType},
     parser::{
-        MalformedLineError, ObjectsIter, ObjectsReadIter, ParseError, parse_objects,
-        parse_objects_iter, parse_objects_read_iter,
+        parse_objects, parse_objects_iter, parse_objects_read_iter, MalformedLineError,
+        ObjectsIter, ObjectsReadIter, ParseError,
     },
     typed::{
         AutNum, Inet6num, Inetnum, Mntner, Organisation, Person, Role, Route, Route6, RpslObject,

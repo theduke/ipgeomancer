@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 
 use axum::response::Html;
-use maud::{Markup, html};
+use maud::{html, Markup};
 use serde_json::Value;
 use std::string::String;
 

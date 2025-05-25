@@ -4,11 +4,11 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 use flate2::read::GzDecoder;
-use ipgeom_rpsl::{RpslObject, parse_objects_read_iter};
+use ipgeom_rpsl::{parse_objects_read_iter, RpslObject};
 
 use crate::db::Database;
 
-use crate::{Client, DbData, RirProvider, registry, types};
+use crate::{registry, types, Client, DbData, RirProvider};
 
 /// Persistent store for RIR database dumps.
 #[derive(Debug)]
@@ -195,9 +195,9 @@ impl Store {
     /// Build a GeoIP2 database from all stored objects.
     pub fn write_geoip_db<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), anyhow::Error> {
         use maxminddb_writer::{
-            Database,
             metadata::{IpVersion, Metadata},
             paths::IpAddrWithMask,
+            Database,
         };
         use serde::Serialize;
         use std::time::{SystemTime, UNIX_EPOCH};

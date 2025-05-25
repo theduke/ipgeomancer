@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 
-use axum::{Router, routing::get};
+use axum::{routing::get, Router};
 use ipgeom_rir::{Database, SqliteDb};
 use tokio::signal;
 use tracing::info;

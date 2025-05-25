@@ -1,7 +1,7 @@
 use axum::{
-    Json,
     extract::{Query, State},
     response::IntoResponse,
+    Json,
 };
 use hickory_proto::rr::RecordType;
 use serde::{Deserialize, Serialize};

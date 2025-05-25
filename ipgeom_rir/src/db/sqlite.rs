@@ -2,9 +2,9 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use super::{Database, object_key};
+use super::{object_key, Database};
 use ipgeom_rpsl::{ObjectType, RpslObject};
-use rusqlite::{OptionalExtension, params};
+use rusqlite::{params, OptionalExtension};
 
 /// Simple SQLite implementation of [`Database`].
 #[derive(Debug, Clone)]
@@ -318,7 +318,7 @@ impl Database for SqliteDb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ipgeom_rpsl::{RpslObject, parse_objects};
+    use ipgeom_rpsl::{parse_objects, RpslObject};
 
     #[test]
     fn lookup_ipv4_all_overlaps() {

@@ -6,7 +6,7 @@ use hickory_proto::rr::RecordType;
 use serde::Deserialize;
 use std::str::FromStr;
 
-use crate::{AppState, ui};
+use crate::{ui, AppState};
 
 #[derive(Deserialize)]
 pub struct Params {
