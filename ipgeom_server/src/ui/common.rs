@@ -57,9 +57,10 @@ pub fn layout(title: &str, body: Markup) -> Html<String> {
                             a class="navbar-item" href="/ping" { "Ping" }
                             a class="navbar-item" href="/traceroute" { "Traceroute" }
                             a class="navbar-item" href="/cert" { "Domain Cert" }
-                            a class="navbar-item" href="/api" { "API" }
                             a class="navbar-item" href="/myip" { "My IP" }
                             a class="navbar-item" href="/lookup" { "IP Lookup" }
+                            hr class="navbar-divider" {}
+                            a class="navbar-item" href="/api" { "API" }
                         }
                     }
                 }
