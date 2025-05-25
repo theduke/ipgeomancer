@@ -19,6 +19,14 @@ The web service is publically available at: https://ipgeomancer.fly.dev/
 
 ## CLI
 
+### Installation
+
+Since the crates are not yet published on crates.io, you can install the CLI directly from the repository:
+
+```bash
+cargo install --locked --git https://github.com/theduke/ipgeomancer ipgeom_cli
+```
+
 The `ipgeom` command line tool provides:
 
 * DNS queries with `ipgeom dns query`
@@ -32,7 +40,7 @@ The `ipgeom` command line tool provides:
   - Generate a geoip2/mmdb geolocation database from RIR data
 
   (see `ipgeom store` subcommands)
-* RPSL format parsing/printing/conversions with `ipgeom rpsl print`
+* RPSL dump parsing/printing/conversions with `ipgeom rpsl print`
 
 * HTTP web server that exposes a REST API as well as a web UI for the above functionality:
   `ipgeom server` (add `--open` to automatically launch the site in your browser)
