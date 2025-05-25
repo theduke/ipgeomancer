@@ -24,8 +24,25 @@ pub fn layout(title: &str, body: Markup) -> Html<String> {
             body {
                 header class="hero is-primary" {
                     div class="hero-body" {
-                        div class="container" {
+                        div class="container is-flex is-justify-content-space-between is-align-items-center" {
                             h1 class="title" { "IpGeomancer" }
+                            a
+                                class="icon is-large has-text-white"
+                                href="https://github.com/theduke/ipgeomancer"
+                                aria-label="GitHub repository"
+                            {
+                                svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    width="24"
+                                    height="24"
+                                {
+                                    path
+                                        fill-rule="evenodd"
+                                        d="M12 0a12 12 0 00-3.79 23.4c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.75-1.34-1.75-1.1-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49.99.11-.77.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.53-1.52.12-3.17 0 0 1-.32 3.3 1.23a11.6 11.6 0 016 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.65.25 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.82.58A12 12 0 0012 0z"
+                                    {}
+                                }
+                            }
                         }
                     }
                 }
