@@ -47,7 +47,8 @@ pub fn layout(title: &str, body: Markup) -> Html<String> {
                     }
                 }
                 nav class="navbar is-light" {
-                    div class="navbar-menu" {
+                    // Keep navbar items visible on mobile as well.
+                    div class="navbar-menu is-active" {
                         div class="navbar-start" {
                             span class="navbar-item" { "Tools:" }
                             a class="navbar-item" href="/dns" { "DNS" }
