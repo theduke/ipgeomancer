@@ -19,7 +19,7 @@ pub async fn handler(
     State(_state): State<AppState>,
     Query(params): Query<Params>,
 ) -> impl IntoResponse {
-    use ui::common::{layout, notification_error, notification_success, page_header};
+    use ui::common::{layout, notification_error, page_header};
     let intro = page_header(
         "DNS Query",
         "Query DNS records against the authoritative server.",
@@ -36,7 +36,6 @@ pub async fn handler(
             Ok(res) => maud::html! {
                 (intro)
                 (ui::dns::form(Some(name), Some(record_type), params.server.as_deref()))
-                (notification_success("Query successful"))
                 (ui::dns::records(&res.authoritative_server, &res.records))
             },
             Err(e) => maud::html! {

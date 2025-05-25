@@ -19,7 +19,7 @@ pub async fn handler(
     State(_state): State<AppState>,
     Query(params): Query<Params>,
 ) -> impl IntoResponse {
-    use ui::common::{layout, notification_error, notification_success, page_header};
+    use ui::common::{layout, notification_error, page_header};
     let intro = page_header("Ping", "Send ICMP echo requests to a host.");
     if let Some(host) = params.host.as_deref() {
         let timeout = Duration::from_secs(params.timeout.unwrap_or(5));
@@ -30,7 +30,6 @@ pub async fn handler(
             Ok(res) => maud::html! {
                 (intro)
                 (ui::ping::form(Some(host), Some(timeout.as_secs()), Some(probes), Some(interval.as_secs())))
-                (notification_success("Ping completed"))
                 (ui::ping::result(&res))
             },
             Err(e) => maud::html! {
