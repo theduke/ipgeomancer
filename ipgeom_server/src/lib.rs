@@ -9,6 +9,7 @@ use std::sync::Arc;
 use axum::{routing::get, Router};
 use ipgeom_rir::{Database, SqliteDb};
 use tokio::signal;
+use tower_http::trace::TraceLayer;
 use tracing::info;
 
 #[derive(Clone)]
@@ -44,6 +45,7 @@ pub async fn run(addr: SocketAddr, db_path: &Path) -> Result<(), anyhow::Error> 
             "/api/v1/query/traceroute",
             get(routes::api::traceroute::handler),
         )
+        .layer(TraceLayer::new_for_http())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;

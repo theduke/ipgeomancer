@@ -17,6 +17,16 @@ REST APIs and a web UI.
 This crate provides the axum based HTTP server that powers the ipgeomancer web
 interface and API. It integrates the individual crates into a cohesive service.
 
+## Logging
+
+[`tower_http::trace`](https://docs.rs/tower-http/latest/tower_http/trace)
+is used for logging of requests.
+
+The default log filter will enable request and response logging with the
+`tower_http::trace=debug` directive.
+Remove logs by setting the `RUST_LOG` environment variable to a desired value.
+
+
 ## License
 
 This project is licensed under the terms of the MIT License. See [LICENSE](../LICENSE) for details.
