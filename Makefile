@@ -1,4 +1,8 @@
 
+server:
+	@echo "Running server..."
+	cargo run -- server -d ./data/db.sqlite
+
 fmt:
 	cargo fmt --all
 
