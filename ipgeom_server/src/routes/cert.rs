@@ -32,6 +32,10 @@ pub async fn handler(
     let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
 
+    if query.as_deref().unwrap_or("").is_empty() {
+        return ui::cert::page(None, None, None);
+    }
+
     let params = match parse_params(query.as_deref()) {
         Ok(v) => v,
         Err(msg) => return ui::cert::page(raw_params.domain.as_deref(), None, Some(&msg)),
