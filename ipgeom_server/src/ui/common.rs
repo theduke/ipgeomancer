@@ -128,6 +128,7 @@ pub fn notification_error(msg: &str) -> Markup {
 pub fn hx_get_form(action: &str, controls: Markup) -> Markup {
     html! {
         form
+            class="mb-4"
             action=(action)
             method="get"
             hx-boost="true"
