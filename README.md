@@ -14,7 +14,7 @@ It has three main goals:
   
 * provide a database for storing and querying data about "the internet", such as RIR data, DNS, BGP, ...
 
-The web service is publically available at: https://ipgeomancer.fly.dev/
+The web service is publically available at: https://ipgeomancer.condacity.io/
 
 
 ## CLI

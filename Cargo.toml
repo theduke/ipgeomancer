@@ -10,7 +10,7 @@ members = [
 [workspace.package]
 authors = ["Christoph Herzog <chris@theduke.at>"]
 edition = "2021"
-homepage = "https://ipgeomancer.fly.dev"
+homepage = "https://ipgeomancer.condacity.io"
 license = "MIT"
 repository = "https://github.com/theduke/ipgeomancer"
 
