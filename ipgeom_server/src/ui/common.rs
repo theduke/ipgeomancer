@@ -60,7 +60,7 @@ pub fn layout(title: &str, body: Markup) -> Html<String> {
                             a class="navbar-item" href="/myip" { "My IP" }
                             a class="navbar-item" href="/lookup" { "IP Lookup" }
                             hr class="navbar-divider" {}
-                            a class="navbar-item" href="/api" { "API" }
+                            a class="navbar-item" href="/api-docs" { "API" }
                         }
                     }
                 }
