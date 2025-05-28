@@ -45,42 +45,44 @@ pub async fn handler(
     State(_state): State<AppState>,
     RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let params: Params =
+    let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
-    match parse_params(query.as_deref()) {
-        Ok(valid) => {
-            let server_ref = valid.server.as_deref();
-            match ipgeom_query::dns::authoritative_query(&valid.name, valid.record_type, server_ref)
-                .await
-            {
-                Ok(res) => {
-                    let rtype = valid.record_type.to_string();
-                    ui::dns::page(
-                        Some(&valid.name),
-                        Some(&rtype),
-                        server_ref,
-                        Some((&res.authoritative_server, &res.records)),
-                        None,
-                    )
-                }
-                Err(e) => {
-                    let rtype = valid.record_type.to_string();
-                    ui::dns::page(
-                        Some(&valid.name),
-                        Some(&rtype),
-                        server_ref,
-                        None,
-                        Some(&e.to_string()),
-                    )
-                }
-            }
+
+    let params = match parse_params(query.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => {
+            return ui::dns::page(
+                raw_params.name.as_deref(),
+                raw_params.record_type.as_deref(),
+                raw_params.server.as_deref(),
+                None,
+                Some(&msg),
+            )
         }
-        Err(msg) => ui::dns::page(
-            params.name.as_deref(),
-            params.record_type.as_deref(),
-            params.server.as_deref(),
-            None,
-            Some(&msg),
-        ),
+    };
+
+    let server_ref = params.server.as_deref();
+    match ipgeom_query::dns::authoritative_query(&params.name, params.record_type, server_ref).await
+    {
+        Ok(res) => {
+            let rtype = params.record_type.to_string();
+            ui::dns::page(
+                Some(&params.name),
+                Some(&rtype),
+                server_ref,
+                Some((&res.authoritative_server, &res.records)),
+                None,
+            )
+        }
+        Err(e) => {
+            let rtype = params.record_type.to_string();
+            ui::dns::page(
+                Some(&params.name),
+                Some(&rtype),
+                server_ref,
+                None,
+                Some(&e.to_string()),
+            )
+        }
     }
 }

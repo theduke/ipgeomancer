@@ -42,23 +42,33 @@ pub async fn handler(
     State(_state): State<AppState>,
     RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let params: Params =
+    let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
-    match parse_params(query.as_deref()) {
-        Ok(valid) => match ipgeom_query::rdap(valid.query_type).await {
-            Ok(res) => ui::rdap::page(Some(&valid.query), valid.qtype.as_deref(), Some(&res), None),
-            Err(e) => ui::rdap::page(
-                Some(&valid.query),
-                valid.qtype.as_deref(),
+
+    let params = match parse_params(query.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => {
+            return ui::rdap::page(
+                raw_params.query.as_deref(),
+                raw_params.qtype.as_deref(),
                 None,
-                Some(&e.to_string()),
-            ),
-        },
-        Err(msg) => ui::rdap::page(
-            params.query.as_deref(),
+                Some(&msg),
+            )
+        }
+    };
+
+    match ipgeom_query::rdap(params.query_type).await {
+        Ok(res) => ui::rdap::page(
+            Some(&params.query),
+            params.qtype.as_deref(),
+            Some(&res),
+            None,
+        ),
+        Err(e) => ui::rdap::page(
+            Some(&params.query),
             params.qtype.as_deref(),
             None,
-            Some(&msg),
+            Some(&e.to_string()),
         ),
     }
 }

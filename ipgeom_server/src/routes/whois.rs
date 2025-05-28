@@ -29,13 +29,16 @@ pub async fn handler(
     State(_state): State<AppState>,
     RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let params: Params =
+    let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
-    match parse_params(query.as_deref()) {
-        Ok(valid) => match ipgeom_query::domain_whois(&valid.domain).await {
-            Ok(json) => ui::whois::page(Some(&valid.domain), Some(&json), None),
-            Err(e) => ui::whois::page(Some(&valid.domain), None, Some(&e.to_string())),
-        },
-        Err(msg) => ui::whois::page(params.domain.as_deref(), None, Some(&msg)),
+
+    let params = match parse_params(query.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => return ui::whois::page(raw_params.domain.as_deref(), None, Some(&msg)),
+    };
+
+    match ipgeom_query::domain_whois(&params.domain).await {
+        Ok(json) => ui::whois::page(Some(&params.domain), Some(&json), None),
+        Err(e) => ui::whois::page(Some(&params.domain), None, Some(&e.to_string())),
     }
 }

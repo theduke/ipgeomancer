@@ -41,40 +41,43 @@ pub async fn handler(
     State(_state): State<AppState>,
     RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let params: Params =
+    let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
-    match parse_params(query.as_deref()) {
-        Ok(valid) => {
-            let timeout = Duration::from_secs(valid.timeout);
-            let interval = Duration::from_secs(valid.interval);
-            let result =
-                ipgeom_query::ping(&valid.host, timeout, valid.probes, interval, None, None).await;
-            match result {
-                Ok(res) => ui::ping::page(
-                    Some(&valid.host),
-                    Some(valid.timeout),
-                    Some(valid.probes),
-                    Some(valid.interval),
-                    Some(&res),
-                    None,
-                ),
-                Err(e) => ui::ping::page(
-                    Some(&valid.host),
-                    Some(valid.timeout),
-                    Some(valid.probes),
-                    Some(valid.interval),
-                    None,
-                    Some(&e.to_string()),
-                ),
-            }
+
+    let params = match parse_params(query.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => {
+            return ui::ping::page(
+                raw_params.host.as_deref(),
+                raw_params.timeout,
+                raw_params.probes,
+                raw_params.interval,
+                None,
+                Some(&msg),
+            )
         }
-        Err(msg) => ui::ping::page(
-            params.host.as_deref(),
-            params.timeout,
-            params.probes,
-            params.interval,
+    };
+
+    let timeout = Duration::from_secs(params.timeout);
+    let interval = Duration::from_secs(params.interval);
+    let result =
+        ipgeom_query::ping(&params.host, timeout, params.probes, interval, None, None).await;
+    match result {
+        Ok(res) => ui::ping::page(
+            Some(&params.host),
+            Some(params.timeout),
+            Some(params.probes),
+            Some(params.interval),
+            Some(&res),
             None,
-            Some(&msg),
+        ),
+        Err(e) => ui::ping::page(
+            Some(&params.host),
+            Some(params.timeout),
+            Some(params.probes),
+            Some(params.interval),
+            None,
+            Some(&e.to_string()),
         ),
     }
 }

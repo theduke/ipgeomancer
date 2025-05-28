@@ -42,55 +42,58 @@ pub async fn handler(
     State(_state): State<AppState>,
     RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let params: Params =
+    let raw_params: Params =
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
-    match parse_params(query.as_deref()) {
-        Ok(valid) => {
-            let wait = Duration::from_secs(valid.wait);
-            let host_string = valid.host.clone();
-            let handle = tokio::runtime::Handle::current();
-            let result = tokio::task::spawn_blocking(move || {
-                handle.block_on(ipgeom_query::traceroute(
-                    &host_string,
-                    ProbeMethod::UDP,
-                    valid.max_hops,
-                    valid.queries,
-                    wait,
-                    16,
-                    None,
-                    true,
-                    None,
-                    None,
-                ))
-            })
-            .await
-            .unwrap();
-            match result {
-                Ok(res) => ui::traceroute::page(
-                    Some(&valid.host),
-                    Some(valid.max_hops),
-                    Some(valid.queries),
-                    Some(valid.wait),
-                    Some(&res),
-                    None,
-                ),
-                Err(e) => ui::traceroute::page(
-                    Some(&valid.host),
-                    Some(valid.max_hops),
-                    Some(valid.queries),
-                    Some(valid.wait),
-                    None,
-                    Some(&e.to_string()),
-                ),
-            }
+
+    let params = match parse_params(query.as_deref()) {
+        Ok(v) => v,
+        Err(msg) => {
+            return ui::traceroute::page(
+                raw_params.host.as_deref(),
+                raw_params.max_hops,
+                raw_params.queries,
+                raw_params.wait,
+                None,
+                Some(&msg),
+            )
         }
-        Err(msg) => ui::traceroute::page(
-            params.host.as_deref(),
+    };
+
+    let wait = Duration::from_secs(params.wait);
+    let host_string = params.host.clone();
+    let handle = tokio::runtime::Handle::current();
+    let result = tokio::task::spawn_blocking(move || {
+        handle.block_on(ipgeom_query::traceroute(
+            &host_string,
+            ProbeMethod::UDP,
             params.max_hops,
             params.queries,
-            params.wait,
+            wait,
+            16,
             None,
-            Some(&msg),
+            true,
+            None,
+            None,
+        ))
+    })
+    .await
+    .unwrap();
+    match result {
+        Ok(res) => ui::traceroute::page(
+            Some(&params.host),
+            Some(params.max_hops),
+            Some(params.queries),
+            Some(params.wait),
+            Some(&res),
+            None,
+        ),
+        Err(e) => ui::traceroute::page(
+            Some(&params.host),
+            Some(params.max_hops),
+            Some(params.queries),
+            Some(params.wait),
+            None,
+            Some(&e.to_string()),
         ),
     }
 }
