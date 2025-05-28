@@ -15,6 +15,14 @@ pub struct ValidParams {
     pub domain: String,
 }
 
+impl From<&ValidParams> for Params {
+    fn from(v: &ValidParams) -> Self {
+        Self {
+            domain: Some(v.domain.clone()),
+        }
+    }
+}
+
 pub(crate) fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
     let params: Params =
         serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
@@ -33,16 +41,16 @@ pub async fn handler(
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
 
     if query.as_deref().unwrap_or("").is_empty() {
-        return ui::cert::page(None, None, None);
+        return ui::cert::page(&Params::default(), None, None);
     }
 
     let params = match parse_params(query.as_deref()) {
         Ok(v) => v,
-        Err(msg) => return ui::cert::page(raw_params.domain.as_deref(), None, Some(&msg)),
+        Err(msg) => return ui::cert::page(&raw_params, None, Some(&msg)),
     };
 
     match ipgeom_query::fetch_certificate(&params.domain).await {
-        Ok(info) => ui::cert::page(Some(&params.domain), Some(&info), None),
-        Err(e) => ui::cert::page(Some(&params.domain), None, Some(&e.to_string())),
+        Ok(info) => ui::cert::page(&Params::from(&params), Some(&info), None),
+        Err(e) => ui::cert::page(&Params::from(&params), None, Some(&e.to_string())),
     }
 }

@@ -1,10 +1,11 @@
 use maud::{html, Markup};
 
 use super::common::hx_get_form;
+use crate::routes::rdap::Params;
 
-pub fn form(query: Option<&str>, qtype: Option<&str>) -> Markup {
-    let query_val = query.unwrap_or("");
-    let qtype_val = qtype.unwrap_or("domain");
+pub fn form(params: &Params) -> Markup {
+    let query_val = params.query.as_deref().unwrap_or("");
+    let qtype_val = params.qtype.as_deref().unwrap_or("domain");
     let types = [
         ("domain", "Domain"),
         ("ipv4", "IPv4"),
@@ -48,8 +49,7 @@ pub fn result(res: &icann_rdap_client::rdap::ResponseData) -> Markup {
 }
 
 pub fn page(
-    query: Option<&str>,
-    qtype: Option<&str>,
+    params: &Params,
     result: Option<&icann_rdap_client::rdap::ResponseData>,
     error: Option<&str>,
 ) -> axum::response::Html<String> {
@@ -59,7 +59,7 @@ pub fn page(
             "RDAP Lookup",
             "Retrieve RDAP information about domains and IPs.",
         ))
-        (form(query, qtype))
+        (form(params))
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some(res) = result {
             (notification_success("Lookup successful"))

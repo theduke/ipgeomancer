@@ -1,17 +1,13 @@
 use maud::{html, Markup};
 
 use super::common::hx_get_form;
+use crate::routes::traceroute::Params;
 
-pub fn form(
-    host: Option<&str>,
-    max_hops: Option<u8>,
-    queries: Option<u16>,
-    wait: Option<u64>,
-) -> Markup {
-    let host_val = host.unwrap_or("");
-    let max_val = max_hops.unwrap_or(30);
-    let queries_val = queries.unwrap_or(3);
-    let wait_val = wait.unwrap_or(3);
+pub fn form(params: &Params) -> Markup {
+    let host_val = params.host.as_deref().unwrap_or("");
+    let max_val = params.max_hops.unwrap_or(30);
+    let queries_val = params.queries.unwrap_or(3);
+    let wait_val = params.wait.unwrap_or(3);
     let inner = html! {
         div class="field is-grouped is-grouped-multiline" {
             div class="field" {
@@ -75,17 +71,14 @@ pub fn result(res: &ipgeom_query::TracerouteResult) -> Markup {
 }
 
 pub fn page(
-    host: Option<&str>,
-    max_hops: Option<u8>,
-    queries: Option<u16>,
-    wait: Option<u64>,
+    params: &Params,
     result: Option<&ipgeom_query::TracerouteResult>,
     error: Option<&str>,
 ) -> axum::response::Html<String> {
     use super::common::{layout, notification_error, notification_success, page_header};
     let body = html! {
         (page_header("Traceroute", "Trace the network path to a host."))
-        (form(host, max_hops, queries, wait))
+        (form(params))
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some(res) = result {
             (notification_success("Traceroute completed"))

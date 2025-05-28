@@ -21,6 +21,16 @@ pub struct ValidParams {
     pub server: Option<String>,
 }
 
+impl From<&ValidParams> for Params {
+    fn from(v: &ValidParams) -> Self {
+        Self {
+            name: Some(v.name.clone()),
+            record_type: Some(v.record_type.to_string()),
+            server: v.server.clone(),
+        }
+    }
+}
+
 pub(crate) fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
     let params: Params =
         serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
@@ -49,44 +59,24 @@ pub async fn handler(
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
 
     if query.as_deref().unwrap_or("").is_empty() {
-        return ui::dns::page(None, None, None, None, None);
+        return ui::dns::page(&Params::default(), None, None);
     }
 
     let params = match parse_params(query.as_deref()) {
         Ok(v) => v,
         Err(msg) => {
-            return ui::dns::page(
-                raw_params.name.as_deref(),
-                raw_params.record_type.as_deref(),
-                raw_params.server.as_deref(),
-                None,
-                Some(&msg),
-            )
+            return ui::dns::page(&raw_params, None, Some(&msg));
         }
     };
 
     let server_ref = params.server.as_deref();
     match ipgeom_query::dns::authoritative_query(&params.name, params.record_type, server_ref).await
     {
-        Ok(res) => {
-            let rtype = params.record_type.to_string();
-            ui::dns::page(
-                Some(&params.name),
-                Some(&rtype),
-                server_ref,
-                Some((&res.authoritative_server, &res.records)),
-                None,
-            )
-        }
-        Err(e) => {
-            let rtype = params.record_type.to_string();
-            ui::dns::page(
-                Some(&params.name),
-                Some(&rtype),
-                server_ref,
-                None,
-                Some(&e.to_string()),
-            )
-        }
+        Ok(res) => ui::dns::page(
+            &Params::from(&params),
+            Some((&res.authoritative_server, &res.records)),
+            None,
+        ),
+        Err(e) => ui::dns::page(&Params::from(&params), None, Some(&e.to_string())),
     }
 }

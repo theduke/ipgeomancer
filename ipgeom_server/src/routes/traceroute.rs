@@ -23,6 +23,17 @@ pub struct ValidParams {
     pub wait: u64,
 }
 
+impl From<&ValidParams> for Params {
+    fn from(v: &ValidParams) -> Self {
+        Self {
+            host: Some(v.host.clone()),
+            max_hops: Some(v.max_hops),
+            queries: Some(v.queries),
+            wait: Some(v.wait),
+        }
+    }
+}
+
 pub(crate) fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
     let params: Params =
         serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
@@ -46,20 +57,13 @@ pub async fn handler(
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
 
     if query.as_deref().unwrap_or("").is_empty() {
-        return ui::traceroute::page(None, None, None, None, None, None);
+        return ui::traceroute::page(&Params::default(), None, None);
     }
 
     let params = match parse_params(query.as_deref()) {
         Ok(v) => v,
         Err(msg) => {
-            return ui::traceroute::page(
-                raw_params.host.as_deref(),
-                raw_params.max_hops,
-                raw_params.queries,
-                raw_params.wait,
-                None,
-                Some(&msg),
-            )
+            return ui::traceroute::page(&raw_params, None, Some(&msg));
         }
     };
 
@@ -83,21 +87,7 @@ pub async fn handler(
     .await
     .unwrap();
     match result {
-        Ok(res) => ui::traceroute::page(
-            Some(&params.host),
-            Some(params.max_hops),
-            Some(params.queries),
-            Some(params.wait),
-            Some(&res),
-            None,
-        ),
-        Err(e) => ui::traceroute::page(
-            Some(&params.host),
-            Some(params.max_hops),
-            Some(params.queries),
-            Some(params.wait),
-            None,
-            Some(&e.to_string()),
-        ),
+        Ok(res) => ui::traceroute::page(&Params::from(&params), Some(&res), None),
+        Err(e) => ui::traceroute::page(&Params::from(&params), None, Some(&e.to_string())),
     }
 }

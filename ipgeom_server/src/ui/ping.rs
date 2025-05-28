@@ -1,17 +1,13 @@
 use maud::{html, Markup};
 
 use super::common::hx_get_form;
+use crate::routes::ping::Params;
 
-pub fn form(
-    host: Option<&str>,
-    timeout: Option<u64>,
-    probes: Option<u16>,
-    interval: Option<u64>,
-) -> Markup {
-    let host_val = host.unwrap_or("");
-    let timeout_val = timeout.unwrap_or(5);
-    let probes_val = probes.unwrap_or(4);
-    let interval_val = interval.unwrap_or(1);
+pub fn form(params: &Params) -> Markup {
+    let host_val = params.host.as_deref().unwrap_or("");
+    let timeout_val = params.timeout.unwrap_or(5);
+    let probes_val = params.probes.unwrap_or(4);
+    let interval_val = params.interval.unwrap_or(1);
     let inner = html! {
         div class="field is-grouped is-grouped-multiline" {
             div class="field" {
@@ -79,17 +75,14 @@ pub fn result(res: &ipgeom_query::PingResult) -> Markup {
 }
 
 pub fn page(
-    host: Option<&str>,
-    timeout: Option<u64>,
-    probes: Option<u16>,
-    interval: Option<u64>,
+    params: &Params,
     result: Option<&ipgeom_query::PingResult>,
     error: Option<&str>,
 ) -> axum::response::Html<String> {
     use super::common::{layout, notification_error, page_header};
     let body = html! {
         (page_header("Ping", "Send ICMP echo requests to a host."))
-        (form(host, timeout, probes, interval))
+        (form(params))
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some(res) = result { (self::result(res)) }
     };

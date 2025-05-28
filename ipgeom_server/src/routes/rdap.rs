@@ -19,6 +19,15 @@ pub struct ValidParams {
     pub qtype: Option<String>,
 }
 
+impl From<&ValidParams> for Params {
+    fn from(v: &ValidParams) -> Self {
+        Self {
+            query: Some(v.query.clone()),
+            qtype: v.qtype.clone(),
+        }
+    }
+}
+
 pub fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
     let params: Params =
         serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
@@ -46,34 +55,20 @@ pub async fn handler(
         serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
 
     if query.as_deref().unwrap_or("").is_empty() {
-        return ui::rdap::page(None, None, None, None);
+        return ui::rdap::page(&Params::default(), None, None);
     }
 
     let params = match parse_params(query.as_deref()) {
         Ok(v) => v,
         Err(msg) => {
-            return ui::rdap::page(
-                raw_params.query.as_deref(),
-                raw_params.qtype.as_deref(),
-                None,
-                Some(&msg),
-            )
+            return ui::rdap::page(&raw_params, None, Some(&msg));
         }
     };
 
+    let page_params = Params::from(&params);
     match ipgeom_query::rdap(params.query_type).await {
-        Ok(res) => ui::rdap::page(
-            Some(&params.query),
-            params.qtype.as_deref(),
-            Some(&res),
-            None,
-        ),
-        Err(e) => ui::rdap::page(
-            Some(&params.query),
-            params.qtype.as_deref(),
-            None,
-            Some(&e.to_string()),
-        ),
+        Ok(res) => ui::rdap::page(&page_params, Some(&res), None),
+        Err(e) => ui::rdap::page(&page_params, None, Some(&e.to_string())),
     }
 }
 

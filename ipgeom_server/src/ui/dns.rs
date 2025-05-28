@@ -2,11 +2,12 @@ use hickory_proto::rr::Record;
 use maud::{html, Markup};
 
 use super::common::hx_get_form;
+use crate::routes::dns::Params;
 
-pub fn form(name: Option<&str>, record_type: Option<&str>, server: Option<&str>) -> Markup {
-    let name_val = name.unwrap_or("");
-    let server_val = server.unwrap_or("");
-    let record_val = record_type.unwrap_or("A");
+pub fn form(params: &Params) -> Markup {
+    let name_val = params.name.as_deref().unwrap_or("");
+    let server_val = params.server.as_deref().unwrap_or("");
+    let record_val = params.record_type.as_deref().unwrap_or("A");
     let record_types = ["A", "AAAA", "MX", "NS", "CNAME", "TXT"];
     let inner = html! {
         div class="field is-grouped is-grouped-multiline" {
@@ -66,9 +67,7 @@ pub fn records(auth_server: &str, records: &[Record]) -> Markup {
 }
 
 pub fn page(
-    name: Option<&str>,
-    record_type: Option<&str>,
-    server: Option<&str>,
+    params: &Params,
     records: Option<(&str, &[Record])>,
     error: Option<&str>,
 ) -> axum::response::Html<String> {
@@ -78,7 +77,7 @@ pub fn page(
             "DNS Query",
             "Query DNS records against the authoritative server.",
         ))
-        (form(name, record_type, server))
+        (form(params))
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some((auth, rec)) = records { (self::records(auth, rec)) }
     };
