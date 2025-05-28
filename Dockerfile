@@ -20,7 +20,7 @@ COPY --from=builder /app/target/release/ipgeom /usr/local/bin/ipgeom
 
 EXPOSE 8080
 ENV IPGEOMANCER_LISTEN="0.0.0.0:8080"
-ENV RUST_LOG="info"
+ENV RUST_LOG="tower_http::trace=debug,info"
 
 ENTRYPOINT ["/usr/local/bin/ipgeom"]
 CMD ["server"]
