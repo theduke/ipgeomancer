@@ -13,7 +13,7 @@ pub fn form(name: Option<&str>, record_type: Option<&str>, server: Option<&str>)
             div class="field" {
                 label class="label" { "Name" }
                 div class="control" {
-                    input class="input" type="text" name="name" value=(name_val) placeholder="example.com";
+                    input class="input" type="text" name="name" value=(name_val) placeholder="example.com" required;
                 }
             }
             div class="field" {

@@ -12,7 +12,7 @@ pub fn form(ip: Option<IpAddr>) -> Markup {
     let inner = html! {
         div class="field has-addons" {
             div class="control" {
-                input class="input" type="text" name="ip" value=(value) placeholder="e.g. 1.1.1.1";
+                input class="input" type="text" name="ip" value=(value) placeholder="e.g. 1.1.1.1" required;
             }
             div class="control" { button type="submit" class="button is-primary" { "Lookup" } }
         }

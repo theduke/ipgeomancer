@@ -24,7 +24,7 @@ pub fn form(query: Option<&str>, qtype: Option<&str>) -> Markup {
         div class="field is-grouped is-grouped-multiline" {
             div class="field" {
                 label class="label" { "Query" }
-                div class="control" { input class="input" type="text" name="query" value=(query_val) placeholder="query"; }
+                div class="control" { input class="input" type="text" name="query" value=(query_val) placeholder="query" required; }
             }
             div class="field" {
                 label class="label" { "Type" }

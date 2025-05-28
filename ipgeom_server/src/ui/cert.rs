@@ -6,7 +6,7 @@ pub fn form(domain: Option<&str>) -> Markup {
     let domain_val = domain.unwrap_or("");
     let inner = html! {
         div class="field has-addons" {
-            div class="control" { input class="input" type="text" name="domain" value=(domain_val) placeholder="example.com"; }
+            div class="control" { input class="input" type="text" name="domain" value=(domain_val) placeholder="example.com" required; }
             div class="control" { button type="submit" class="button is-primary" { "Check" } }
         }
     };

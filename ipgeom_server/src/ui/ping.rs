@@ -16,7 +16,7 @@ pub fn form(
         div class="field is-grouped is-grouped-multiline" {
             div class="field" {
                 label class="label" { "Host" }
-                div class="control" { input class="input" type="text" name="host" value=(host_val) placeholder="example.com"; }
+                div class="control" { input class="input" type="text" name="host" value=(host_val) placeholder="example.com" required; }
             }
             div class="field" {
                 label class="label" { "Timeout" }
