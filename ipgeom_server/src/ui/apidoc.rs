@@ -3,7 +3,15 @@ use maud::{html, Markup};
 
 use super::common::{layout, page_header};
 
-fn endpoint(route: &str, desc: &str, params: Markup, response: &str) -> Markup {
+fn endpoint(
+    host: &str,
+    route: &str,
+    desc: &str,
+    params: Markup,
+    response: &str,
+    example_path: &str,
+) -> Markup {
+    let url = format!("https://{}{}", host, example_path);
     html! {
         div class="box" {
             h3 class="title is-5" { code { (route) } }
@@ -12,11 +20,13 @@ fn endpoint(route: &str, desc: &str, params: Markup, response: &str) -> Markup {
             (params)
             p { b { "Response:" } }
             pre { (response) }
+            p { b { "curl:" } }
+            pre { (format!("curl '{}'", url)) }
         }
     }
 }
 
-pub fn page() -> Html<String> {
+pub fn page(host: &str) -> Html<String> {
     let dns_params = html! {
         ul {
             li { code { "name" } " - domain name (required)" }
@@ -57,40 +67,52 @@ pub fn page() -> Html<String> {
         (page_header("API", "REST API Endpoints"))
         div class="content" {
             (endpoint(
+                host,
                 "GET /api/v1/query/dns",
                 "Query DNS records from the authoritative server.",
                 dns_params,
                 r#"{\"authoritative_server\": \"ns.example.com\", \"records\": [{\"name\": \"example.com.\", \"ttl\": 300, \"record_type\": \"A\", \"data\": \"93.184.216.34\"}]}"#,
+                "/api/v1/query/dns?name=example.com&record_type=A",
             ))
             (endpoint(
+                host,
                 "GET /api/v1/query/whois",
                 "Query WHOIS information for a domain.",
                 whois_params,
                 r#"{\"server\": \"whois.example.com\", \"data\": \"...\"}"#,
+                "/api/v1/query/whois?domain=example.com",
             ))
             (endpoint(
+                host,
                 "GET /api/v1/query/rdap",
                 "Perform an RDAP query (domains, IPs, ASNs, ...).",
                 rdap_params,
                 r#"{\"objectClassName\": \"domain\", ...}"#,
+                "/api/v1/query/rdap?query=example.com",
             ))
             (endpoint(
+                host,
                 "GET /api/v1/ping",
                 "Send ICMP echo requests to a host.",
                 ping_params,
                 r#"{\"ip\": \"1.2.3.4\", ...}"#,
+                "/api/v1/ping?host=example.com&probes=1",
             ))
             (endpoint(
+                host,
                 "GET /api/v1/query/traceroute",
                 "Trace the network path to a host.",
                 trace_params,
                 r#"{\"destination\": \"1.2.3.4\", \"hops\": [...]}"#,
+                "/api/v1/query/traceroute?host=example.com&max_hops=1",
             ))
             (endpoint(
+                host,
                 "GET /api/v1/query/domain-certificate",
                 "Fetch TLS certificate information for a domain.",
                 cert_params,
                 r#"{\"subject\": \"...\", \"issuer\": \"...\", \"not_before\": \"...\", \"not_after\": \"...\", \"valid\": true}"#,
+                "/api/v1/query/domain-certificate?domain=example.com",
             ))
         }
     };
