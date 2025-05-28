@@ -64,3 +64,23 @@ pub fn records(auth_server: &str, records: &[Record]) -> Markup {
         }
     }
 }
+
+pub fn page(
+    name: Option<&str>,
+    record_type: Option<&str>,
+    server: Option<&str>,
+    records: Option<(&str, &[Record])>,
+    error: Option<&str>,
+) -> axum::response::Html<String> {
+    use super::common::{layout, notification_error, page_header};
+    let body = html! {
+        (page_header(
+            "DNS Query",
+            "Query DNS records against the authoritative server.",
+        ))
+        (form(name, record_type, server))
+        @if let Some(err) = error { (notification_error(err)) }
+        @if let Some((auth, rec)) = records { (self::records(auth, rec)) }
+    };
+    layout("DNS Query", body)
+}

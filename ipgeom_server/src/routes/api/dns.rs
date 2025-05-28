@@ -1,21 +1,11 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
     Json,
 };
-use hickory_proto::rr::RecordType;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::str::FromStr;
+use serde::Serialize;
 
-use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct Params {
-    name: String,
-    record_type: Option<String>,
-    server: Option<String>,
-}
+use crate::{routes::dns::parse_params, util, AppState};
 
 #[derive(Serialize)]
 pub struct DnsRecord {
@@ -33,36 +23,36 @@ pub struct DnsResponse {
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let rtype = params
-        .record_type
-        .as_deref()
-        .and_then(|s| RecordType::from_str(s).ok())
-        .unwrap_or(RecordType::A);
-    let server = params.server.as_deref().filter(|s| !s.is_empty());
-    match ipgeom_query::dns::authoritative_query(&params.name, rtype, server).await {
-        Ok(res) => {
-            let records = res
-                .records
-                .into_iter()
-                .map(|r| DnsRecord {
-                    name: r.name().to_utf8(),
-                    ttl: r.ttl(),
-                    record_type: r.record_type().to_string(),
-                    data: r.data().to_string(),
-                })
-                .collect();
-            Json(DnsResponse {
-                authoritative_server: res.authoritative_server,
-                records,
-            })
-            .into_response()
+    // Parse parameters only for validation
+    match parse_params(query.as_deref()) {
+        Ok(valid) => {
+            let server_ref = valid.server.as_deref();
+            match ipgeom_query::dns::authoritative_query(&valid.name, valid.record_type, server_ref)
+                .await
+            {
+                Ok(res) => {
+                    let records = res
+                        .records
+                        .into_iter()
+                        .map(|r| DnsRecord {
+                            name: r.name().to_utf8(),
+                            ttl: r.ttl(),
+                            record_type: r.record_type().to_string(),
+                            data: r.data().to_string(),
+                        })
+                        .collect();
+                    Json(DnsResponse {
+                        authoritative_server: res.authoritative_server,
+                        records,
+                    })
+                    .into_response()
+                }
+                Err(e) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &e.to_string())
+                    .into_response(),
+            }
         }
-        Err(e) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(json!({"error": e.to_string()})),
-        )
-            .into_response(),
+        Err(msg) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &msg).into_response(),
     }
 }

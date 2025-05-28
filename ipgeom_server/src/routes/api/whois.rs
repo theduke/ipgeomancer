@@ -1,28 +1,22 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
     Json,
 };
-use serde::Deserialize;
-use serde_json::json;
 
-use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct Params {
-    domain: String,
-}
+use crate::{routes::whois::parse_params, util, AppState};
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    match ipgeom_query::domain_whois(&params.domain).await {
-        Ok(res) => Json(res).into_response(),
-        Err(e) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(json!({"error": e.to_string()})),
-        )
-            .into_response(),
+    // parse parameters for error reporting only
+    match parse_params(query.as_deref()) {
+        Ok(valid) => match ipgeom_query::domain_whois(&valid.domain).await {
+            Ok(res) => Json(res).into_response(),
+            Err(e) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &e.to_string())
+                .into_response(),
+        },
+        Err(msg) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &msg).into_response(),
     }
 }

@@ -1,4 +1,6 @@
+use axum::{http::StatusCode, Json};
 use ipgeom_rir::Database;
+use serde_json::json;
 use serde_json::Value;
 use std::net::IpAddr;
 
@@ -28,4 +30,9 @@ pub fn lookup_inet_object(
     }
 
     Ok(None)
+}
+
+/// Create a JSON error response tuple suitable for Axum handlers.
+pub fn json_error(status: StatusCode, message: &str) -> (StatusCode, Json<Value>) {
+    (status, Json(json!({"error": message})))
 }

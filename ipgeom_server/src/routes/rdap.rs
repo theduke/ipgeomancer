@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
 };
 use serde::Deserialize;
@@ -7,51 +7,59 @@ use std::str::FromStr;
 
 use crate::{ui, AppState};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Params {
-    query: Option<String>,
-    qtype: Option<String>,
+    pub query: Option<String>,
+    pub qtype: Option<String>,
+}
+
+pub struct ValidParams {
+    pub query_type: icann_rdap_client::rdap::QueryType,
+    pub query: String,
+    pub qtype: Option<String>,
+}
+
+pub fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
+    let params: Params =
+        serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
+    let q = params.query.unwrap_or_default();
+    if q.trim().is_empty() {
+        return Err("missing 'query' parameter".into());
+    }
+    let qt = if let Some(t) = params.qtype.as_deref() {
+        parse_query_type(t, &q).map_err(|e| e.to_string())?
+    } else {
+        icann_rdap_client::rdap::QueryType::from_str(&q).map_err(|e| e.to_string())?
+    };
+    Ok(ValidParams {
+        query_type: qt,
+        query: q,
+        qtype: params.qtype,
+    })
 }
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    use ui::common::{layout, notification_error, notification_success, page_header};
-    let intro = page_header(
-        "RDAP Lookup",
-        "Retrieve RDAP information about domains and IPs.",
-    );
-    if let Some(query) = params.query.as_deref() {
-        let qt_res = if let Some(t) = params.qtype.as_deref() {
-            parse_query_type(t, query)
-        } else {
-            icann_rdap_client::rdap::QueryType::from_str(query).map_err(|e| e.into())
-        };
-        let body = match qt_res {
-            Ok(qt) => match ipgeom_query::rdap(qt).await {
-                Ok(res) => maud::html! {
-                    (intro)
-                    (ui::rdap::form(Some(query), params.qtype.as_deref()))
-                    (notification_success("Lookup successful"))
-                    (ui::rdap::result(&res))
-                },
-                Err(e) => maud::html! {
-                    (intro)
-                    (ui::rdap::form(Some(query), params.qtype.as_deref()))
-                    (notification_error(&e.to_string()))
-                },
-            },
-            Err(e) => maud::html! {
-                (intro)
-                (ui::rdap::form(Some(query), params.qtype.as_deref()))
-                (notification_error(&e.to_string()))
-            },
-        };
-        layout("RDAP Lookup", body)
-    } else {
-        let body = maud::html! { (intro) (ui::rdap::form(None, None)) };
-        layout("RDAP Lookup", body)
+    let params: Params =
+        serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
+    match parse_params(query.as_deref()) {
+        Ok(valid) => match ipgeom_query::rdap(valid.query_type).await {
+            Ok(res) => ui::rdap::page(Some(&valid.query), valid.qtype.as_deref(), Some(&res), None),
+            Err(e) => ui::rdap::page(
+                Some(&valid.query),
+                valid.qtype.as_deref(),
+                None,
+                Some(&e.to_string()),
+            ),
+        },
+        Err(msg) => ui::rdap::page(
+            params.query.as_deref(),
+            params.qtype.as_deref(),
+            None,
+            Some(&msg),
+        ),
     }
 }
 

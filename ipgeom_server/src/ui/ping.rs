@@ -77,3 +77,21 @@ pub fn result(res: &ipgeom_query::PingResult) -> Markup {
         }
     }
 }
+
+pub fn page(
+    host: Option<&str>,
+    timeout: Option<u64>,
+    probes: Option<u16>,
+    interval: Option<u64>,
+    result: Option<&ipgeom_query::PingResult>,
+    error: Option<&str>,
+) -> axum::response::Html<String> {
+    use super::common::{layout, notification_error, page_header};
+    let body = html! {
+        (page_header("Ping", "Send ICMP echo requests to a host."))
+        (form(host, timeout, probes, interval))
+        @if let Some(err) = error { (notification_error(err)) }
+        @if let Some(res) = result { (self::result(res)) }
+    };
+    layout("Ping", body)
+}

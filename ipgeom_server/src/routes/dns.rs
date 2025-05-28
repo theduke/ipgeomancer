@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
 };
 use hickory_proto::rr::RecordType;
@@ -8,45 +8,79 @@ use std::str::FromStr;
 
 use crate::{ui, AppState};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Params {
-    name: Option<String>,
-    record_type: Option<String>,
-    server: Option<String>,
+    pub name: Option<String>,
+    pub record_type: Option<String>,
+    pub server: Option<String>,
+}
+
+pub struct ValidParams {
+    pub name: String,
+    pub record_type: RecordType,
+    pub server: Option<String>,
+}
+
+pub(crate) fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
+    let params: Params =
+        serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
+    let name = params.name.unwrap_or_default();
+    if name.trim().is_empty() {
+        return Err("missing 'name' parameter".into());
+    }
+    let rtype = params
+        .record_type
+        .as_deref()
+        .and_then(|s| RecordType::from_str(s).ok())
+        .unwrap_or(RecordType::A);
+    let server = params.server.filter(|s| !s.is_empty());
+    Ok(ValidParams {
+        name,
+        record_type: rtype,
+        server,
+    })
 }
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    use ui::common::{layout, notification_error, page_header};
-    let intro = page_header(
-        "DNS Query",
-        "Query DNS records against the authoritative server.",
-    );
-    if let (Some(name), Some(record_type)) = (params.name.as_deref(), params.record_type.as_deref())
-    {
-        let rtype = RecordType::from_str(record_type).unwrap_or(RecordType::A);
-        let server = params
-            .server
-            .as_deref()
-            .and_then(|s| if s.is_empty() { None } else { Some(s) });
-        let result = ipgeom_query::dns::authoritative_query(name, rtype, server).await;
-        let body = match result {
-            Ok(res) => maud::html! {
-                (intro)
-                (ui::dns::form(Some(name), Some(record_type), params.server.as_deref()))
-                (ui::dns::records(&res.authoritative_server, &res.records))
-            },
-            Err(e) => maud::html! {
-                (intro)
-                (ui::dns::form(Some(name), Some(record_type), params.server.as_deref()))
-                (notification_error(&e.to_string()))
-            },
-        };
-        layout("DNS Query", body)
-    } else {
-        let body = maud::html! { (intro) (ui::dns::form(None, None, None)) };
-        layout("DNS Query", body)
+    let params: Params =
+        serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
+    match parse_params(query.as_deref()) {
+        Ok(valid) => {
+            let server_ref = valid.server.as_deref();
+            match ipgeom_query::dns::authoritative_query(&valid.name, valid.record_type, server_ref)
+                .await
+            {
+                Ok(res) => {
+                    let rtype = valid.record_type.to_string();
+                    ui::dns::page(
+                        Some(&valid.name),
+                        Some(&rtype),
+                        server_ref,
+                        Some((&res.authoritative_server, &res.records)),
+                        None,
+                    )
+                }
+                Err(e) => {
+                    let rtype = valid.record_type.to_string();
+                    ui::dns::page(
+                        Some(&valid.name),
+                        Some(&rtype),
+                        server_ref,
+                        None,
+                        Some(&e.to_string()),
+                    )
+                }
+            }
+        }
+        Err(msg) => ui::dns::page(
+            params.name.as_deref(),
+            params.record_type.as_deref(),
+            params.server.as_deref(),
+            None,
+            Some(&msg),
+        ),
     }
 }

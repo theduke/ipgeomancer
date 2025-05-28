@@ -29,6 +29,7 @@ icann-rdap-client = "0.0.22"
 maud = "0.27.0"
 async-traceroute = "0.1.2"
 tower-http = { version = "0.6.4", features = ["trace"] }
+serde_urlencoded = "0.7"
 
 [dev-dependencies]
 reqwest = { workspace = true, default-features = false, features = ["rustls-tls", "json"] }

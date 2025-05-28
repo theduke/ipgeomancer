@@ -73,3 +73,24 @@ pub fn result(res: &ipgeom_query::TracerouteResult) -> Markup {
         }
     }
 }
+
+pub fn page(
+    host: Option<&str>,
+    max_hops: Option<u8>,
+    queries: Option<u16>,
+    wait: Option<u64>,
+    result: Option<&ipgeom_query::TracerouteResult>,
+    error: Option<&str>,
+) -> axum::response::Html<String> {
+    use super::common::{layout, notification_error, notification_success, page_header};
+    let body = html! {
+        (page_header("Traceroute", "Trace the network path to a host."))
+        (form(host, max_hops, queries, wait))
+        @if let Some(err) = error { (notification_error(err)) }
+        @if let Some(res) = result {
+            (notification_success("Traceroute completed"))
+            (self::result(res))
+        }
+    };
+    layout("Traceroute", body)
+}

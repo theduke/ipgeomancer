@@ -1,40 +1,41 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
 };
 use serde::Deserialize;
 
 use crate::{ui, AppState};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Params {
-    domain: Option<String>,
+    pub domain: Option<String>,
+}
+
+pub struct ValidParams {
+    pub domain: String,
+}
+
+pub(crate) fn parse_params(query: Option<&str>) -> Result<ValidParams, String> {
+    let params: Params =
+        serde_urlencoded::from_str(query.unwrap_or("")).map_err(|_| "invalid query parameters")?;
+    let domain = params.domain.unwrap_or_default();
+    if domain.trim().is_empty() {
+        return Err("missing 'domain' parameter".into());
+    }
+    Ok(ValidParams { domain })
 }
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    use ui::common::{layout, notification_error, notification_success, page_header};
-    let intro = page_header("Domain Certificate", "Fetch TLS certificate information.");
-    if let Some(domain) = params.domain.as_deref() {
-        let result = ipgeom_query::fetch_certificate(domain).await;
-        let body = match result {
-            Ok(info) => maud::html! {
-                (intro)
-                (ui::cert::form(Some(domain)))
-                (notification_success("Certificate fetched"))
-                (ui::cert::result(&info))
-            },
-            Err(e) => maud::html! {
-                (intro)
-                (ui::cert::form(Some(domain)))
-                (notification_error(&e.to_string()))
-            },
-        };
-        layout("Domain Certificate", body)
-    } else {
-        let body = maud::html! { (intro) (ui::cert::form(None)) };
-        layout("Domain Certificate", body)
+    let params: Params =
+        serde_urlencoded::from_str(query.as_deref().unwrap_or("")).unwrap_or_default();
+    match parse_params(query.as_deref()) {
+        Ok(valid) => match ipgeom_query::fetch_certificate(&valid.domain).await {
+            Ok(info) => ui::cert::page(Some(&valid.domain), Some(&info), None),
+            Err(e) => ui::cert::page(Some(&valid.domain), None, Some(&e.to_string())),
+        },
+        Err(msg) => ui::cert::page(params.domain.as_deref(), None, Some(&msg)),
     }
 }

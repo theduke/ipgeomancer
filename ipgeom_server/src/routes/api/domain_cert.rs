@@ -1,17 +1,11 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde::Serialize;
 
-use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct Params {
-    domain: String,
-}
+use crate::{routes::cert::parse_params, util, AppState};
 
 #[derive(Serialize)]
 pub struct CertResponse {
@@ -24,21 +18,22 @@ pub struct CertResponse {
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    match ipgeom_query::fetch_certificate(&params.domain).await {
-        Ok(info) => Json(CertResponse {
-            subject: info.subject,
-            issuer: info.issuer,
-            not_before: info.not_before,
-            not_after: info.not_after,
-            valid: info.valid,
-        })
-        .into_response(),
-        Err(e) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(json!({"error": e.to_string()})),
-        )
+    // parse parameters for error reporting only
+    match parse_params(query.as_deref()) {
+        Ok(valid) => match ipgeom_query::fetch_certificate(&valid.domain).await {
+            Ok(info) => Json(CertResponse {
+                subject: info.subject,
+                issuer: info.issuer,
+                not_before: info.not_before,
+                not_after: info.not_after,
+                valid: info.valid,
+            })
             .into_response(),
+            Err(e) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &e.to_string())
+                .into_response(),
+        },
+        Err(msg) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &msg).into_response(),
     }
 }

@@ -1,21 +1,12 @@
 use axum::{
-    extract::{Query, State},
+    extract::{RawQuery, State},
     response::IntoResponse,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde::Serialize;
 use std::time::Duration;
 
-use crate::AppState;
-
-#[derive(Deserialize)]
-pub struct Params {
-    host: String,
-    timeout: Option<u64>,
-    probes: Option<u16>,
-    interval: Option<u64>,
-}
+use crate::{routes::ping::parse_params, util, AppState};
 
 #[derive(Serialize)]
 pub struct PingResponse {
@@ -32,28 +23,31 @@ pub struct PingResponse {
 
 pub async fn handler(
     State(_state): State<AppState>,
-    Query(params): Query<Params>,
+    RawQuery(query): RawQuery,
 ) -> impl IntoResponse {
-    let timeout = Duration::from_secs(params.timeout.unwrap_or(5));
-    let probes = params.probes.unwrap_or(4);
-    let interval = Duration::from_secs(params.interval.unwrap_or(1));
-    match ipgeom_query::ping(&params.host, timeout, probes, interval, None, None).await {
-        Ok(res) => Json(PingResponse {
-            ip: res.ip,
-            transmitted: res.transmitted,
-            received: res.received,
-            pings: res.pings,
-            avg_time_ms: res.avg_time_ms,
-            min_time_ms: res.min_time_ms,
-            max_time_ms: res.max_time_ms,
-            stddev_ms: res.stddev_ms,
-            total_time_ms: res.total_time_ms,
-        })
-        .into_response(),
-        Err(e) => (
-            axum::http::StatusCode::BAD_REQUEST,
-            Json(json!({"error": e.to_string()})),
-        )
-            .into_response(),
+    // parse parameters for error reporting only
+    match parse_params(query.as_deref()) {
+        Ok(valid) => {
+            let timeout = Duration::from_secs(valid.timeout);
+            let interval = Duration::from_secs(valid.interval);
+            match ipgeom_query::ping(&valid.host, timeout, valid.probes, interval, None, None).await
+            {
+                Ok(res) => Json(PingResponse {
+                    ip: res.ip,
+                    transmitted: res.transmitted,
+                    received: res.received,
+                    pings: res.pings,
+                    avg_time_ms: res.avg_time_ms,
+                    min_time_ms: res.min_time_ms,
+                    max_time_ms: res.max_time_ms,
+                    stddev_ms: res.stddev_ms,
+                    total_time_ms: res.total_time_ms,
+                })
+                .into_response(),
+                Err(e) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &e.to_string())
+                    .into_response(),
+            }
+        }
+        Err(msg) => util::json_error(axum::http::StatusCode::BAD_REQUEST, &msg).into_response(),
     }
 }

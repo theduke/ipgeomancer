@@ -36,3 +36,21 @@ pub fn result(res: &ipgeom_whois::WhoisResponse) -> Markup {
         }
     }
 }
+
+pub fn page(
+    domain: Option<&str>,
+    result: Option<&ipgeom_whois::WhoisResponse>,
+    error: Option<&str>,
+) -> axum::response::Html<String> {
+    use super::common::{layout, notification_error, notification_success, page_header};
+    let body = html! {
+        (page_header("WHOIS Lookup", "Query WHOIS information for a domain."))
+        (form(domain))
+        @if let Some(err) = error { (notification_error(err)) }
+        @if let Some(res) = result {
+            (notification_success("Lookup successful"))
+            (self::result(res))
+        }
+    };
+    layout("WHOIS Lookup", body)
+}
