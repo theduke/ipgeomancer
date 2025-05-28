@@ -25,7 +25,11 @@ pub fn layout(title: &str, body: Markup) -> Html<String> {
                 header class="hero is-primary is-small" {
                     div class="hero-body" {
                         div class="container is-flex is-justify-content-space-between is-align-items-center" {
-                            h1 class="title" { "IpGeomancer" }
+                            h1 class="title" {
+                                a href="/" class="has-text-black" {
+                                    "IpGeomancer"
+                                }
+                            }
                             a
                                 class="icon is-large has-text-white"
                                 href="https://github.com/theduke/ipgeomancer"
