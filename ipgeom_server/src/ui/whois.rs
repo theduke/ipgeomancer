@@ -53,5 +53,9 @@ pub fn page(
             (self::result(res))
         }
     };
-    layout("WHOIS Lookup", body)
+    layout(
+        "WHOIS Lookup",
+        "Query WHOIS information for a domain.",
+        body,
+    )
 }

@@ -12,5 +12,9 @@ pub fn page(ip: IpAddr, countries: &[String]) -> Html<String> {
         (under_construction_warning())
         (ip_info(ip, countries))
     };
-    layout("Your IP", body)
+    layout(
+        "Your IP",
+        "Information about your current IP address.",
+        body,
+    )
 }

@@ -85,5 +85,5 @@ pub fn page(
             (self::result(res))
         }
     };
-    layout("Traceroute", body)
+    layout("Traceroute", "Trace the network path to a host.", body)
 }

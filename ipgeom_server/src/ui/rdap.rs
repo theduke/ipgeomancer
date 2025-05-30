@@ -66,5 +66,9 @@ pub fn page(
             (self::result(res))
         }
     };
-    layout("RDAP Lookup", body)
+    layout(
+        "RDAP Lookup",
+        "Retrieve RDAP information about domains and IPs.",
+        body,
+    )
 }

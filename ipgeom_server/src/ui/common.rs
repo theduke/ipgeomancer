@@ -3,12 +3,19 @@ use maud::{html, Markup, DOCTYPE};
 use std::net::IpAddr;
 
 /// Wrap body HTML in a basic Bulma layout.
-pub fn layout(title: &str, body: Markup) -> Html<String> {
+///
+/// The page title and a short description are used to populate meta
+/// tags for SEO and social media previews.
+pub fn layout(title: &str, description: &str, body: Markup) -> Html<String> {
     let markup = html! {
         (DOCTYPE)
         html {
             head {
                 meta charset="utf-8";
+                meta name="viewport" content="width=device-width, initial-scale=1";
+                meta name="description" content=(description);
+                meta property="og:title" content=(title);
+                meta property="og:description" content=(description);
                 title { (title) }
 
                 // Bulma CSS

@@ -8,5 +8,5 @@ pub fn page(path: &str) -> Html<String> {
         (page_header("Not Found", "The requested page could not be found."))
         p { "No page was found at \"" (path) "\"." }
     };
-    layout("Not Found", body)
+    layout("Not Found", "The requested page could not be found.", body)
 }

@@ -86,5 +86,5 @@ pub fn page(
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some(res) = result { (self::result(res)) }
     };
-    layout("Ping", body)
+    layout("Ping", "Send ICMP echo requests to a host.", body)
 }

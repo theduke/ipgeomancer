@@ -116,5 +116,5 @@ pub fn page(host: &str) -> Html<String> {
             ))
         }
     };
-    layout("API", body)
+    layout("API", "REST API Endpoints", body)
 }

@@ -41,5 +41,5 @@ pub fn page(
             }
         }
     };
-    layout("IP Lookup", body)
+    layout("IP Lookup", "Look up the location of any IP address.", body)
 }

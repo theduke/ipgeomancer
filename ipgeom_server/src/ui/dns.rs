@@ -81,5 +81,9 @@ pub fn page(
         @if let Some(err) = error { (notification_error(err)) }
         @if let Some((auth, rec)) = records { (self::records(auth, rec)) }
     };
-    layout("DNS Query", body)
+    layout(
+        "DNS Query",
+        "Query DNS records against the authoritative server.",
+        body,
+    )
 }

@@ -41,5 +41,9 @@ pub fn page(
             (self::result(res))
         }
     };
-    layout("Domain Certificate", body)
+    layout(
+        "Domain Certificate",
+        "Fetch TLS certificate information.",
+        body,
+    )
 }

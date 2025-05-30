@@ -37,5 +37,9 @@ pub fn page() -> Html<String> {
             (tool_link("/api", "API", "REST API documentation."))
         }
     };
-    layout("IpGeomancer", body)
+    layout(
+        "IpGeomancer",
+        "A set of tools to investigate internet infrastructure.",
+        body,
+    )
 }
