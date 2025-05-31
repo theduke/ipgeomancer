@@ -1,9 +1,11 @@
 pub mod cert;
 pub mod dns;
+pub mod password;
 pub mod ping;
 pub mod traceroute;
 
 pub use cert::{fetch_certificate, CertificateInfo};
+pub use password::generate_bcrypt_hash;
 pub use ping::{ping, ping_with_callback, resolve_host, IpVersion, PingResult, PingUpdate};
 pub use traceroute::{
     traceroute, traceroute_with_callback, TracerouteHop, TracerouteResult, TracerouteUpdate,

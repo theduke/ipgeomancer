@@ -1,6 +1,7 @@
 pub mod dns;
 pub mod domain;
 pub mod ipdb;
+pub mod password_hash;
 pub mod ping;
 pub mod rdap;
 pub mod rpsl;

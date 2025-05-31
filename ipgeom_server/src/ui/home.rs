@@ -27,6 +27,7 @@ pub fn page() -> Html<String> {
             (tool_link("/ping", "Ping", "Send ICMP echo requests to a host."))
             (tool_link("/traceroute", "Traceroute", "Trace the network path to a host."))
             (tool_link("/cert", "Domain Cert", "Fetch TLS certificate information."))
+            (tool_link("/password-hash", "Password Hash", "Generate bcrypt password hashes."))
             (tool_link("/myip", "My IP", "Information about your current IP address."))
             (tool_link("/lookup", "IP Lookup", "Look up the location of any IP address."))
         }

@@ -62,6 +62,12 @@ pub fn page(host: &str) -> Html<String> {
     let cert_params = html! {
         ul { li { code { "domain" } " - domain name (required)" } }
     };
+    let hash_params = html! {
+        ul {
+            li { code { "method" } " - hashing method (only bcrypt supported)" }
+            li { code { "password" } " - password to hash (required)" }
+        }
+    };
 
     let body = html! {
         (page_header("API", "REST API Endpoints"))
@@ -113,6 +119,14 @@ pub fn page(host: &str) -> Html<String> {
                 cert_params,
                 r#"{\"subject\": \"...\", \"issuer\": \"...\", \"not_before\": \"...\", \"not_after\": \"...\", \"valid\": true}"#,
                 "/api/v1/query/domain-certificate?domain=example.com",
+            ))
+            (endpoint(
+                host,
+                "GET /api/v1/password-hash-generate",
+                "Generate a password hash.",
+                hash_params,
+                r#"{\"method\": \"bcrypt\", \"hash\": \"$2b$...\"}"#,
+                "/api/v1/password-hash-generate?method=bcrypt&password=secret",
             ))
         }
     };

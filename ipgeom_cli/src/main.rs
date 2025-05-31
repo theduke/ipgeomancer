@@ -43,6 +43,8 @@ enum Commands {
     Ping(cmd::ping::PingCmd),
     /// Trace the route to a host
     Traceroute(cmd::traceroute::TracerouteCmd),
+    /// Generate password hashes
+    MakePasswordHash(cmd::password_hash::MakePasswordHashCmd),
 }
 
 #[tokio::main]
@@ -69,6 +71,7 @@ async fn main() -> Result<()> {
         Commands::Rdap(cmd) => cmd::rdap::handle(cmd).await?,
         Commands::Ping(cmd) => cmd::ping::handle(cmd).await?,
         Commands::Traceroute(cmd) => cmd::traceroute::handle(cmd).await?,
+        Commands::MakePasswordHash(cmd) => cmd::password_hash::handle(cmd)?,
     }
 
     Ok(())

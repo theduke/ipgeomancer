@@ -68,6 +68,7 @@ pub fn layout(title: &str, description: &str, body: Markup) -> Html<String> {
                             a class="navbar-item" href="/ping" { "Ping" }
                             a class="navbar-item" href="/traceroute" { "Traceroute" }
                             a class="navbar-item" href="/cert" { "Domain Cert" }
+                            a class="navbar-item" href="/password-hash" { "Password Hash" }
                             a class="navbar-item" href="/myip" { "My IP" }
                             a class="navbar-item" href="/lookup" { "IP Lookup" }
                             hr class="navbar-divider" {}

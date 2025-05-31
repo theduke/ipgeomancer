@@ -6,6 +6,7 @@ pub mod home;
 pub mod lookup;
 pub mod myip;
 pub mod not_found;
+pub mod password_hash;
 pub mod ping;
 pub mod rdap;
 pub mod traceroute;

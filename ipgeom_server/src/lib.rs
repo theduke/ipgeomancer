@@ -32,6 +32,10 @@ pub async fn run(addr: SocketAddr, db_path: &Path) -> Result<(), anyhow::Error> 
         )
         .route("/v1/ping", get(routes::api::ping::handler))
         .route(
+            "/v1/password-hash-generate",
+            get(routes::api::password_hash::handler),
+        )
+        .route(
             "/v1/query/traceroute",
             get(routes::api::traceroute::handler),
         )
@@ -47,6 +51,7 @@ pub async fn run(addr: SocketAddr, db_path: &Path) -> Result<(), anyhow::Error> 
         .route("/ping", get(routes::ping::handler))
         .route("/traceroute", get(routes::traceroute::handler))
         .route("/cert", get(routes::cert::handler))
+        .route("/password-hash", get(routes::password_hash::handler))
         .route("/api-docs", get(routes::apidoc::handler))
         .nest("/api", api_router)
         .fallback(routes::not_found::handler)

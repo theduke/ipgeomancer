@@ -19,7 +19,15 @@ async fn web_pages_without_query_show_no_error() {
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
     let client = Client::new();
-    let paths = ["/ping", "/traceroute", "/dns", "/whois", "/rdap", "/cert"];
+    let paths = [
+        "/ping",
+        "/traceroute",
+        "/dns",
+        "/whois",
+        "/rdap",
+        "/cert",
+        "/password-hash",
+    ];
     for path in paths {
         let url = format!("http://{}{}", addr, path);
         let resp = client.get(&url).send().await.unwrap();
